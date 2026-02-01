@@ -1,0 +1,330 @@
+"""
+Export lessons learned to a single HTML file with expandable cards and client-side
+filtering (Phase, Category, Discipline, Status).
+"""
+import json
+from pathlib import Path
+from typing import Any
+
+from sllr.config import PROJECT_ROOT
+
+
+def _escape(s: str) -> str:
+    if s is None:
+        return ""
+    s = str(s)
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def build_html_string(
+    lessons: list[dict[str, Any]],
+    title: str = "Lessons Learned Registry",
+) -> str:
+    """Build the HTML report as a string (expandable cards + filters). Use for file export or embedding."""
+    lessons_data = [{k: (v or "") for k, v in r.items()} for r in lessons]
+    lessons_json = json.dumps(lessons_data).replace("</", "<\\/")
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{_escape(title)}</title>
+  <style>
+    :root {{
+      --bg: #0f1419;
+      --card: #1a2332;
+      --border: #2d3a4d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #79b8ff;
+      --success: #3fb950;
+      --warning: #d29922;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 1rem;
+      line-height: 1.5;
+    }}
+    h1 {{
+      font-size: 1.5rem;
+      margin: 0 0 1rem 0;
+      color: var(--text);
+    }}
+    .filters {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      padding: 0.75rem;
+      background: var(--card);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }}
+    .filters label {{
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.875rem;
+      color: var(--muted);
+    }}
+    .filters select {{
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.35rem 0.6rem;
+      font-size: 0.875rem;
+      min-width: 120px;
+    }}
+    .filters select:focus {{
+      outline: none;
+      border-color: var(--accent);
+    }}
+    .count {{
+      margin-left: auto;
+      font-size: 0.875rem;
+      color: var(--muted);
+    }}
+    .count strong {{ color: var(--text); }}
+    .grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1rem;
+    }}
+    .card {{
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }}
+    .card:hover {{ border-color: var(--accent); }}
+    .card-header {{
+      padding: 0.85rem 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      user-select: none;
+    }}
+    .card-header:focus {{
+      outline: none;
+    }}
+    .card-toggle {{
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--border);
+      border-radius: 4px;
+      font-size: 0.75rem;
+      transition: transform 0.2s;
+    }}
+    .card.expanded .card-toggle {{ transform: rotate(90deg); }}
+    .card-id {{
+      font-size: 0.75rem;
+      color: var(--accent);
+      font-weight: 600;
+    }}
+    .card-title {{
+      font-size: 0.95rem;
+      font-weight: 500;
+      margin: 0.2rem 0 0 0;
+      color: var(--text);
+    }}
+    .card-meta {{
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.35rem;
+    }}
+    .card-body {{
+      display: none;
+      padding: 0 1rem 1rem 1rem;
+      border-top: 1px solid var(--border);
+    }}
+    .card.expanded .card-body {{ display: block; }}
+    .card-body dl {{
+      margin: 0;
+      font-size: 0.875rem;
+    }}
+    .card-body dt {{
+      color: var(--muted);
+      font-weight: 500;
+      margin-top: 0.5rem;
+      margin-bottom: 0.15rem;
+    }}
+    .card-body dd {{
+      margin: 0;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }}
+    .badge {{
+      display: inline-block;
+      font-size: 0.7rem;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      margin-right: 0.25rem;
+      margin-top: 0.25rem;
+    }}
+    .badge-draft {{ background: var(--muted); color: var(--bg); }}
+    .badge-approved {{ background: var(--accent); color: var(--bg); }}
+    .badge-embedded {{ background: var(--success); color: var(--bg); }}
+    .no-results {{
+      padding: 2rem;
+      text-align: center;
+      color: var(--muted);
+    }}
+  </style>
+</head>
+<body>
+  <h1>{_escape(title)}</h1>
+  <div class="filters">
+    <label>Phase <select id="filter-phase"><option value="">All</option></select></label>
+    <label>Category <select id="filter-category"><option value="">All</option></select></label>
+    <label>Discipline <select id="filter-discipline"><option value="">All</option></select></label>
+    <label>Status <select id="filter-status"><option value="">All</option></select></label>
+    <span class="count">Showing <strong id="visible-count">0</strong> of <strong id="total-count">0</strong> lessons</span>
+  </div>
+  <div id="grid" class="grid"></div>
+  <div id="no-results" class="no-results" style="display:none;">No lessons match the selected filters.</div>
+
+  <script type="application/json" id="lessons-data">{lessons_json}</script>
+  <script>
+    const lessons = JSON.parse(document.getElementById('lessons-data').textContent);
+    const grid = document.getElementById('grid');
+    const noResults = document.getElementById('no-results');
+    const visibleCountEl = document.getElementById('visible-count');
+    const totalCountEl = document.getElementById('total-count');
+
+    function unique(values) {{
+      return [...new Set(values)].filter(Boolean).sort();
+    }}
+
+    function populateFilters() {{
+      const phases = unique(lessons.map(l => l['Project Phase']));
+      const categories = unique(lessons.map(l => l['Category']));
+      const disciplines = unique(lessons.map(l => l['Discipline']));
+      const statuses = unique(lessons.map(l => l['Status']));
+      const addOptions = (id, values) => {{
+        const sel = document.getElementById(id);
+        values.forEach(v => {{
+          const opt = document.createElement('option');
+          opt.value = v;
+          opt.textContent = v;
+          sel.appendChild(opt);
+        }});
+      }};
+      addOptions('filter-phase', phases);
+      addOptions('filter-category', categories);
+      addOptions('filter-discipline', disciplines);
+      addOptions('filter-status', statuses);
+      totalCountEl.textContent = lessons.length;
+    }}
+
+    function escapeHtml(s) {{
+      if (!s) return '';
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }}
+
+    function statusClass(s) {{
+      if (!s) return '';
+      return 'badge-' + String(s).toLowerCase().replace(/\\s/g, '-');
+    }}
+
+    function renderCard(lesson) {{
+      const id = escapeHtml(lesson['Lesson ID'] || '');
+      const title = escapeHtml(lesson['Title'] || '');
+      const phase = escapeHtml(lesson['Project Phase'] || '');
+      const cat = escapeHtml(lesson['Category'] || '');
+      const disc = escapeHtml(lesson['Discipline'] || '');
+      const status = lesson['Status'] || '';
+      const statusCls = statusClass(status);
+      const fields = [
+        ['Root Cause', lesson['Root Cause']],
+        ['What Happened', lesson['What Happened']],
+        ['Impact', lesson['Impact']],
+        ['Lesson Learned', lesson['Lesson Learned']],
+        ['Recommendation', lesson['Recommendation']],
+        ['Applicability', lesson['Applicability']],
+        ['Keywords', lesson['Keywords']],
+        ['Owner', lesson['Owner']],
+        ['Failure Type', lesson['Failure Type']],
+        ['Created', lesson['Created Date']],
+        ['Modified', lesson['Modified Date']],
+        ['Reuse Count', lesson['Reuse Count']]
+      ].filter(([, v]) => v);
+      const bodyRows = fields.map(([k, v]) => `<dt>${{escapeHtml(k)}}</dt><dd>${{escapeHtml(String(v))}}</dd>`).join('');
+      return `
+        <div class="card" data-phase="${{escapeHtml(phase)}}" data-category="${{escapeHtml(cat)}}" data-discipline="${{escapeHtml(disc)}}" data-status="${{escapeHtml(status)}}">
+          <div class="card-header" role="button" tabindex="0" aria-expanded="false">
+            <span class="card-toggle">▶</span>
+            <div>
+              <div class="card-id">${{id}}</div>
+              <div class="card-title">${{title}}</div>
+              <div class="card-meta">${{phase}} · ${{cat}} · ${{disc}}</div>
+              ${{status ? `<span class="badge ${{statusCls}}">${{escapeHtml(status)}}</span>` : ''}}
+            </div>
+          </div>
+          <div class="card-body">
+            <dl>${{bodyRows}}</dl>
+          </div>
+        </div>
+      `;
+    }}
+
+    function filterAndRender() {{
+      const phase = document.getElementById('filter-phase').value;
+      const category = document.getElementById('filter-category').value;
+      const discipline = document.getElementById('filter-discipline').value;
+      const status = document.getElementById('filter-status').value;
+      const filtered = lessons.filter(l => {{
+        if (phase && (l['Project Phase'] || '') !== phase) return false;
+        if (category && (l['Category'] || '') !== category) return false;
+        if (discipline && (l['Discipline'] || '') !== discipline) return false;
+        if (status && (l['Status'] || '') !== status) return false;
+        return true;
+      }});
+      grid.innerHTML = filtered.map(renderCard).join('');
+      visibleCountEl.textContent = filtered.length;
+      noResults.style.display = filtered.length ? 'none' : 'block';
+      grid.querySelectorAll('.card-header').forEach((el, i) => {{
+        const card = el.closest('.card');
+        el.addEventListener('click', () => card.classList.toggle('expanded'));
+        el.addEventListener('keydown', e => {{ if (e.key === 'Enter' || e.key === ' ') {{ e.preventDefault(); card.classList.toggle('expanded'); }} }});
+      }});
+    }}
+
+    document.getElementById('filter-phase').addEventListener('change', filterAndRender);
+    document.getElementById('filter-category').addEventListener('change', filterAndRender);
+    document.getElementById('filter-discipline').addEventListener('change', filterAndRender);
+    document.getElementById('filter-status').addEventListener('change', filterAndRender);
+    populateFilters();
+    filterAndRender();
+  </script>
+</body>
+</html>
+"""
+
+
+def build_html(
+    lessons: list[dict[str, Any]],
+    output_path: Path | None = None,
+    title: str = "Lessons Learned Registry",
+) -> Path:
+    """Build a single HTML file with expandable cards and filters."""
+    path = output_path or (PROJECT_ROOT / "reports" / "lessons_learned.html")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(build_html_string(lessons, title), encoding="utf-8")
+    return path

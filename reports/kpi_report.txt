@@ -1,0 +1,7 @@
+--- SLLR KPI Summary ---
+Total lessons: 1
+% Lessons Embedded: 0.0%
+Lessons with reuse: 0 (total reuse count: 0)
+Repeated issues (same discipline/failure/root cause): 0
+Avg capture-to-approval (days): N/A
+By Status: Draft=1

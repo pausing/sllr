@@ -1,0 +1,6 @@
+SLLR Duplicates Report
+======================
+Exact duplicate groups: 0
+Near-duplicate pairs (by title similarity): 0
+
+--- Near duplicates (top 20 by similarity) ---
