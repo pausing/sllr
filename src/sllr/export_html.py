@@ -1,6 +1,6 @@
 """
 Export lessons learned to a single HTML file with expandable cards and client-side
-filtering (Phase, Category, Discipline, Status).
+filtering (Phase, Category, Technical Block, Status).
 """
 import json
 from pathlib import Path
@@ -191,8 +191,9 @@ def build_html_string(
   <div class="filters">
     <label>Phase <select id="filter-phase"><option value="">All</option></select></label>
     <label>Category <select id="filter-category"><option value="">All</option></select></label>
-    <label>Discipline <select id="filter-discipline"><option value="">All</option></select></label>
+    <label>Technical Block <select id="filter-technical-block"><option value="">All</option></select></label>
     <label>Status <select id="filter-status"><option value="">All</option></select></label>
+    <label>Implementation <select id="filter-implementation"><option value="">All</option></select></label>
     <span class="count">Showing <strong id="visible-count">0</strong> of <strong id="total-count">0</strong> lessons</span>
   </div>
   <div id="grid" class="grid"></div>
@@ -213,8 +214,9 @@ def build_html_string(
     function populateFilters() {{
       const phases = unique(lessons.map(l => l['Project Phase']));
       const categories = unique(lessons.map(l => l['Category']));
-      const disciplines = unique(lessons.map(l => l['Discipline']));
+      const technicalBlocks = unique(lessons.map(l => l['Technical Block']));
       const statuses = unique(lessons.map(l => l['Status']));
+      const implementationStatuses = unique(lessons.map(l => l['Implementation Status']));
       const addOptions = (id, values) => {{
         const sel = document.getElementById(id);
         values.forEach(v => {{
@@ -226,8 +228,9 @@ def build_html_string(
       }};
       addOptions('filter-phase', phases);
       addOptions('filter-category', categories);
-      addOptions('filter-discipline', disciplines);
+      addOptions('filter-technical-block', technicalBlocks);
       addOptions('filter-status', statuses);
+      addOptions('filter-implementation', implementationStatuses);
       totalCountEl.textContent = lessons.length;
     }}
 
@@ -248,32 +251,34 @@ def build_html_string(
       const title = escapeHtml(lesson['Title'] || '');
       const phase = escapeHtml(lesson['Project Phase'] || '');
       const cat = escapeHtml(lesson['Category'] || '');
-      const disc = escapeHtml(lesson['Discipline'] || '');
+      const techBlock = escapeHtml(lesson['Technical Block'] || '');
       const status = lesson['Status'] || '';
       const statusCls = statusClass(status);
       const fields = [
+        ['Technical Block', lesson['Technical Block']],
+        ['Sub-category', lesson['Sub-category']],
         ['Root Cause', lesson['Root Cause']],
         ['What Happened', lesson['What Happened']],
         ['Impact', lesson['Impact']],
         ['Lesson Learned', lesson['Lesson Learned']],
         ['Recommendation', lesson['Recommendation']],
-        ['Applicability', lesson['Applicability']],
+        ['Recommendation Due Date', lesson['Recommendation Due Date']],
+        ['Implementation Status', lesson['Implementation Status']],
         ['Keywords', lesson['Keywords']],
         ['Owner', lesson['Owner']],
-        ['Failure Type', lesson['Failure Type']],
         ['Created', lesson['Created Date']],
-        ['Modified', lesson['Modified Date']],
-        ['Reuse Count', lesson['Reuse Count']]
+        ['Modified', lesson['Modified Date']]
       ].filter(([, v]) => v);
       const bodyRows = fields.map(([k, v]) => `<dt>${{escapeHtml(k)}}</dt><dd>${{escapeHtml(String(v))}}</dd>`).join('');
+      const implStatus = lesson['Implementation Status'] || '';
       return `
-        <div class="card" data-phase="${{escapeHtml(phase)}}" data-category="${{escapeHtml(cat)}}" data-discipline="${{escapeHtml(disc)}}" data-status="${{escapeHtml(status)}}">
+        <div class="card" data-phase="${{escapeHtml(phase)}}" data-category="${{escapeHtml(cat)}}" data-technical-block="${{escapeHtml(techBlock)}}" data-status="${{escapeHtml(status)}}" data-implementation="${{escapeHtml(implStatus)}}">
           <div class="card-header" role="button" tabindex="0" aria-expanded="false">
             <span class="card-toggle">▶</span>
             <div>
               <div class="card-id">${{id}}</div>
               <div class="card-title">${{title}}</div>
-              <div class="card-meta">${{phase}} · ${{cat}} · ${{disc}}</div>
+              <div class="card-meta">${{phase}} · ${{cat}} · ${{techBlock}}</div>
               ${{status ? `<span class="badge ${{statusCls}}">${{escapeHtml(status)}}</span>` : ''}}
             </div>
           </div>
@@ -287,13 +292,15 @@ def build_html_string(
     function filterAndRender() {{
       const phase = document.getElementById('filter-phase').value;
       const category = document.getElementById('filter-category').value;
-      const discipline = document.getElementById('filter-discipline').value;
+      const technicalBlock = document.getElementById('filter-technical-block').value;
       const status = document.getElementById('filter-status').value;
+      const implementation = document.getElementById('filter-implementation').value;
       const filtered = lessons.filter(l => {{
         if (phase && (l['Project Phase'] || '') !== phase) return false;
         if (category && (l['Category'] || '') !== category) return false;
-        if (discipline && (l['Discipline'] || '') !== discipline) return false;
+        if (technicalBlock && (l['Technical Block'] || '') !== technicalBlock) return false;
         if (status && (l['Status'] || '') !== status) return false;
+        if (implementation && (l['Implementation Status'] || '') !== implementation) return false;
         return true;
       }});
       grid.innerHTML = filtered.map(renderCard).join('');
@@ -308,8 +315,9 @@ def build_html_string(
 
     document.getElementById('filter-phase').addEventListener('change', filterAndRender);
     document.getElementById('filter-category').addEventListener('change', filterAndRender);
-    document.getElementById('filter-discipline').addEventListener('change', filterAndRender);
+    document.getElementById('filter-technical-block').addEventListener('change', filterAndRender);
     document.getElementById('filter-status').addEventListener('change', filterAndRender);
+    document.getElementById('filter-implementation').addEventListener('change', filterAndRender);
     populateFilters();
     filterAndRender();
   </script>

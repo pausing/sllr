@@ -40,29 +40,32 @@ def compute_kpis(rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     if not rows:
         return {
             "total_lessons": 0,
-            "pct_embedded": 0.0,
-            "lessons_embedded": 0,
-            "lessons_reused": 0,
-            "total_reuse_count": 0,
             "repeated_issues_count": 0,
             "capture_to_approval_days_avg": None,
+            "approved_count": 0,
+            "implemented_count": 0,
+            "pct_implemented": 0.0,
+            "overdue_not_implemented_count": 0,
             "by_status": {},
-            "by_discipline": {},
-            "by_failure_type": {},
+            "by_category": {},
+            "by_technical_block": {},
+            "by_implementation_status": {},
         }
 
     total = len(rows)
     by_status = defaultdict(int)
-    embedded = 0
-    total_reuse = 0
+    by_implementation_status = defaultdict(int)
     approval_times = []
+    approved_rows = []
+    today = datetime.now().date()
 
     for r in rows:
         status = (r.get("Status") or "").strip()
         by_status[status] += 1
-        if status == "Embedded":
-            embedded += 1
-        total_reuse += _to_int(r.get("Reuse Count"))
+        impl = (r.get("Implementation Status") or "").strip() or "Not Implemented"
+        by_implementation_status[impl] += 1
+        if status == "Approved":
+            approved_rows.append(r)
 
         created = _parse_date(r.get("Created Date"))
         modified = _parse_date(r.get("Modified Date"))
@@ -71,39 +74,56 @@ def compute_kpis(rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
             if delta >= 0:
                 approval_times.append(delta)
 
-    pct_embedded = (embedded / total * 100) if total else 0.0
     avg_approval = (
         round(sum(approval_times) / len(approval_times), 1) if approval_times else None
     )
 
-    # Repeated issues: count lessons that share same (Discipline, Failure Type, Root Cause) pattern
+    # Implementation KPIs: among Approved lessons only
+    implemented_count = sum(
+        1 for r in approved_rows
+        if (r.get("Implementation Status") or "").strip() == "Implemented"
+    )
+    approved_count = len(approved_rows)
+    pct_implemented = (
+        round(100.0 * implemented_count / approved_count, 1) if approved_count else 0.0
+    )
+    overdue_not_implemented_count = 0
+    for r in approved_rows:
+        if (r.get("Implementation Status") or "").strip() == "Implemented":
+            continue
+        due = _parse_date(r.get("Recommendation Due Date"))
+        if due and due.date() < today:
+            overdue_not_implemented_count += 1
+
+    # Repeated issues: count lessons that share same (Technical Block, Category, Root Cause) pattern
     pattern_count: dict[str, int] = defaultdict(int)
     for r in rows:
         key = (
-            (r.get("Discipline") or "").strip(),
-            (r.get("Failure Type") or "").strip(),
+            (r.get("Technical Block") or "").strip(),
+            (r.get("Category") or "").strip(),
             (r.get("Root Cause") or "").strip()[:100],
         )
         pattern_count[str(key)] += 1
     repeated_issues = sum(1 for c in pattern_count.values() if c > 1)
 
-    by_discipline = defaultdict(int)
-    by_failure_type = defaultdict(int)
+    by_category = defaultdict(int)
+    by_technical_block = defaultdict(int)
     for r in rows:
-        by_discipline[(r.get("Discipline") or "").strip() or "Unknown"] += 1
-        by_failure_type[(r.get("Failure Type") or "").strip() or "Unknown"] += 1
+        by_category[(r.get("Category") or "").strip() or "Unknown"] += 1
+        by_technical_block[(r.get("Technical Block") or "").strip() or "Unknown"] += 1
 
     return {
         "total_lessons": total,
-        "pct_embedded": round(pct_embedded, 1),
-        "lessons_embedded": embedded,
-        "lessons_reused": sum(1 for r in rows if _to_int(r.get("Reuse Count", 0)) > 0),
-        "total_reuse_count": total_reuse,
         "repeated_issues_count": repeated_issues,
         "capture_to_approval_days_avg": avg_approval,
+        "approved_count": approved_count,
+        "implemented_count": implemented_count,
+        "pct_implemented": pct_implemented,
+        "overdue_not_implemented_count": overdue_not_implemented_count,
         "by_status": dict(by_status),
-        "by_discipline": dict(by_discipline),
-        "by_failure_type": dict(by_failure_type),
+        "by_category": dict(by_category),
+        "by_technical_block": dict(by_technical_block),
+        "by_implementation_status": dict(by_implementation_status),
     }
 
 
@@ -113,10 +133,12 @@ def kpi_summary_text(kpis: dict[str, Any] | None = None) -> str:
     lines = [
         "--- SLLR KPI Summary ---",
         f"Total lessons: {kpis['total_lessons']}",
-        f"% Lessons Embedded: {kpis['pct_embedded']}%",
-        f"Lessons with reuse: {kpis['lessons_reused']} (total reuse count: {kpis['total_reuse_count']})",
-        f"Repeated issues (same discipline/failure/root cause): {kpis['repeated_issues_count']}",
+        f"Repeated issues (same technical block/category/root cause): {kpis['repeated_issues_count']}",
         f"Avg capture-to-approval (days): {kpis['capture_to_approval_days_avg'] or 'N/A'}",
+        f"Approved lessons: {kpis['approved_count']}",
+        f"Recommendations implemented: {kpis['implemented_count']} ({kpis['pct_implemented']}% of approved)",
+        f"Overdue (due date passed, not implemented): {kpis['overdue_not_implemented_count']}",
         "By Status: " + ", ".join(f"{k}={v}" for k, v in kpis["by_status"].items()),
+        "By Implementation Status: " + ", ".join(f"{k}={v}" for k, v in kpis["by_implementation_status"].items()),
     ]
     return "\n".join(lines)

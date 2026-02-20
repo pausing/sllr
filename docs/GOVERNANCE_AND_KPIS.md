@@ -4,18 +4,18 @@
 
 | KPI | Objective | How Computed |
 |-----|-----------|--------------|
-| **% Lessons Embedded** | Measure organizational learning | (Count of lessons with Status = Embedded) / Total lessons × 100 |
-| **Lessons Reused** | Track actual reuse | Count of lessons where Reuse Count > 0; also sum of Reuse Count |
-| **Repeated Issues** | Indicator of system effectiveness | Count of (Discipline, Failure Type, Root Cause) combinations that appear in more than one lesson |
+| **Repeated Issues** | Indicator of system effectiveness | Count of (Technical Block, Category, Root Cause) combinations that appear in more than one lesson |
 | **Capture-to-Approval Time** | Process efficiency | Average days from Created Date to Modified Date for lessons with Status = Approved |
+| **% Recommendations Implemented** | Track implementation of approved lessons | (Count of Approved lessons with Implementation Status = Implemented) / Approved count × 100 |
+| **Overdue (not implemented)** | Follow up on due dates | Count of Approved lessons where Recommendation Due Date is in the past and Implementation Status ≠ Implemented |
 
 ## Lifecycle
 
-**Capture → Review → Approval → Embedding → Reuse**
+**Capture (Draft) → Review → Approval → Implementation Follow Up**
 
-- **Draft**: New or under review.
+- **Draft**: New or under review (only status allowed when creating a lesson).
 - **Approved**: Reviewed and approved for reuse.
-- **Embedded**: Incorporated into standards, procedures, or templates.
+- **Implementation Follow Up**: In the app, use **Implementation Follow Up** to set **Implementation Status** from **Not Implemented** to **Implemented** once the recommendation has been applied. Set **Recommendation Due Date** when adding a lesson to track deadlines.
 
 ## Running KPIs
 

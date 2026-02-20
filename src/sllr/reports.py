@@ -5,7 +5,7 @@ import csv
 from pathlib import Path
 from typing import Any
 
-from sllr.config import PROJECT_ROOT
+from sllr.config import LESSON_SCHEMA, PROJECT_ROOT
 from sllr.duplicate_detection import find_duplicates, find_near_duplicates
 from sllr.kpi import compute_kpis, kpi_summary_text
 from sllr.loaders import load_lessons_master
@@ -75,26 +75,16 @@ def generate_kpi_report(output_path: Path | None = None) -> str:
 
 def export_dashboard_csv(output_path: Path | None = None) -> Path:
     """
-    Export a flat CSV suitable for Power BI: lessons plus computed flags.
-    Adds columns: Is_Embedded, Reuse_Count_Num, Validation_Errors.
+    Export a flat CSV suitable for Power BI: lessons plus Validation_Errors.
     """
     rows = load_lessons_master()
     from sllr.validation import validate_lesson
     from sllr.loaders import load_all_references
     refs = load_all_references()
-    fieldnames = list(rows[0].keys()) if rows else []
-    extra = ["Is_Embedded", "Reuse_Count_Num", "Validation_Errors"]
-    for c in extra:
-        if c not in fieldnames:
-            fieldnames.append(c)
+    fieldnames = list(LESSON_SCHEMA.keys()) + ["Validation_Errors"]
     out_rows: list[dict[str, Any]] = []
     for r in rows:
-        row = dict(r)
-        row["Is_Embedded"] = 1 if (row.get("Status") or "").strip() == "Embedded" else 0
-        try:
-            row["Reuse_Count_Num"] = int(float(str(row.get("Reuse Count") or 0)))
-        except (ValueError, TypeError):
-            row["Reuse_Count_Num"] = 0
+        row = {k: r.get(k, "") for k in LESSON_SCHEMA}
         errs = validate_lesson(row, refs)
         row["Validation_Errors"] = "; ".join(errs) if errs else ""
         out_rows.append(row)

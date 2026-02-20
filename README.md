@@ -15,11 +15,10 @@ lessonsLearned/
 ├── app.py                   # Streamlit app (run: streamlit run app.py)
 ├── data/                    # Data layer (CSV)
 │   ├── lessons_master.csv   # One row per lesson
-│   ├── disciplines.csv      # Controlled: Civil, Electrical, SCADA, Grid, BESS, HSE, Contracts
-│   ├── phases.csv           # Lifecycle phases
-│   ├── failure_types.csv    # Failure taxonomy
-│   ├── categories.csv       # Top-level categories
-│   └── statuses.csv         # Draft, Approved, Embedded
+│   ├── categories.csv       # Development, Engineering, Procurement, Construction, O&M
+│   ├── technical_blocks.csv  # Civil, HV & Grid, PV, BESS
+│   ├── phases.csv           # Development, Pre-Execution, Construction, O&M
+│   └── statuses.csv         # Draft, Approved
 ├── src/sllr/                # Logic layer (Python)
 │   ├── config.py            # Paths and schema
 │   ├── loaders.py           # Load reference CSVs and lessons master
@@ -77,40 +76,44 @@ Then open the URL (e.g. http://localhost:8501). Use the sidebar to switch betwee
 |-------|-------------|
 | Lesson ID | Unique identifier |
 | Title | One-line action-oriented summary |
-| Category | Engineering, Procurement, Construction, O&M |
-| Sub-category | Detailed technical area |
-| Discipline | Civil, Electrical, SCADA, Grid, BESS, HSE |
-| Project Phase | Development, Engineering, Procurement, Construction, Commissioning, O&M |
-| Failure Type | Technical, Interface, Vendor, Regulatory, Organizational |
+| Category | Development, Engineering, Procurement, Construction, O&M |
+| Technical Block | Civil, HV & Grid, PV, BESS |
+| Sub-category | Detailed technical area or subcontracting package |
+| Project Phase | Development, Pre-Execution, Construction, O&M |
 | Root Cause | Underlying reason |
 | What Happened | Concise factual description |
 | Impact | Cost, schedule, quality, safety |
 | Lesson Learned | Single-sentence learning |
 | Recommendation | Mandatory future action |
-| Applicability | Technology, geography, project type |
+| Recommendation Due Date | Optional; target date for implementing the recommendation |
 | Keywords | Search tags |
-| Status | Draft, Approved, Embedded |
+| Status | Draft, Approved (when creating, only Draft is allowed) |
+| Implementation Status | Not Implemented, Implemented (tracks whether recommendation was applied) |
 | Owner | Responsible role |
-| Created Date / Modified Date / Reuse Count | Optional metadata |
+| Created Date / Modified Date | Optional metadata |
 
 ## Classification Axes (Controlled Values)
 
-- **Discipline**: Civil, Electrical, SCADA, Grid, BESS, HSE, Contracts  
-- **Project Phase**: Development, Engineering, Procurement, Construction, Commissioning, O&M  
-- **Failure Type**: Technical, Interface, Vendor, Regulatory, Organizational  
+- **Category**: Development, Engineering, Procurement, Construction, O&M  
+- **Technical Block**: Civil, HV & Grid, PV, BESS  
+- **Project Phase**: Development, Pre-Execution, Construction, O&M  
+- **Status**: Draft, Approved  
+- **Implementation Status**: Not Implemented, Implemented  
 
 Reference CSVs in `data/` define these; Python validation enforces them and prevents free-text drift.
 
 ## Lifecycle
 
-**Capture → Review → Approval → Embedding → Reuse**
+**Capture (Draft) → Review → Approval → Implementation Follow Up**
+
+Use **Implementation Follow Up** (after approval) to mark recommendations as **Implemented** when the action has been taken. Set a **Recommendation Due Date** when adding a lesson to track overdue items.
 
 ## Governance KPIs
 
-- **% Lessons Embedded** – organizational learning
-- **Lessons Reused** – actual reuse (Reuse Count)
-- **Repeated Issues** – same discipline/failure/root cause
+- **Repeated Issues** – same technical block / category / root cause
 - **Capture-to-Approval Time** – process efficiency
+- **% Recommendations Implemented** – share of approved lessons with recommendation implemented
+- **Overdue (not implemented)** – approved lessons past due date still not implemented
 
 See `docs/GOVERNANCE_AND_KPIS.md` for definitions and usage.
 

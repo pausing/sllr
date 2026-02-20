@@ -1,6 +1,6 @@
 """
 Export lessons learned to PDF: grouped by Phase, then Category (page break between
-categories), ordered by Discipline and Sub-category within each category.
+categories), ordered by Technical Block and Sub-category within each category.
 """
 import csv
 from pathlib import Path
@@ -45,7 +45,7 @@ def _phase_order() -> dict[str, int]:
 
 def _group_lessons_for_pdf(lessons: list[dict[str, Any]]) -> list[tuple[str, str, list[dict[str, Any]]]]:
     """
-    Group lessons by Phase, then Category. Within each category, sort by Discipline, Sub-category.
+    Group lessons by Phase, then Category. Within each category, sort by Technical Block, Sub-category.
     Returns list of (phase, category, sorted_lessons).
     """
     phase_order = _phase_order()
@@ -59,11 +59,11 @@ def _group_lessons_for_pdf(lessons: list[dict[str, Any]]) -> list[tuple[str, str
             groups[key] = []
         groups[key].append(r)
 
-    # Sort within each group by Discipline, Sub-category
+    # Sort within each group by Technical Block, Sub-category
     for key in groups:
         groups[key].sort(
             key=lambda x: (
-                (x.get("Discipline") or "").strip(),
+                (x.get("Technical Block") or "").strip(),
                 (x.get("Sub-category") or "").strip(),
             )
         )
@@ -100,7 +100,7 @@ def build_pdf(
 ) -> Path:
     """
     Build a PDF with one section per (phase, category); page break between categories.
-    Ordered by phase (from phases.csv), then category, then discipline, sub-category.
+    Ordered by phase (from phases.csv), then category, then technical block, sub-category.
     """
     if not REPORTLAB_AVAILABLE:
         raise RuntimeError("reportlab is required for PDF export. Install with: pip install reportlab")
@@ -162,13 +162,17 @@ def build_pdf(
         for r in group:
             lid = _escape(r.get("Lesson ID") or "")
             title_text = _escape(r.get("Title") or "")
-            disc = _escape(r.get("Discipline") or "")
+            tech_block = _escape(r.get("Technical Block") or "")
             sub = _escape(r.get("Sub-category") or "")
             story.append(Paragraph(f"<b>{lid}</b> {title_text}", body))
-            story.append(Paragraph(f"Discipline: {disc} | Sub-category: {sub}", small))
+            story.append(Paragraph(f"Technical Block: {tech_block} | Sub-category: {sub}", small))
             story.append(Paragraph(f"<b>What happened:</b> {_escape(r.get('What Happened') or '')}", small))
             story.append(Paragraph(f"<b>Lesson learned:</b> {_escape(r.get('Lesson Learned') or '')}", small))
             story.append(Paragraph(f"<b>Recommendation:</b> {_escape(r.get('Recommendation') or '')}", small))
+            due = r.get("Recommendation Due Date") or ""
+            impl = r.get("Implementation Status") or ""
+            if due or impl:
+                story.append(Paragraph(f"<b>Due date:</b> {_escape(due)} | <b>Implementation:</b> {_escape(impl)}", small))
             story.append(Spacer(1, 2 * mm))
         story.append(Spacer(1, 4 * mm))
 
