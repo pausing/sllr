@@ -1,7 +1,20 @@
 # SLLR - Structured Lessons Learned Registry
-# Core: stdlib only for CLI/scripts
-# Streamlit app
-streamlit>=1.28.0
+
+# Backend: FastAPI
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.0.0
+python-multipart>=0.0.9
+
+# Data processing
 pandas>=2.0.0
-# Export: PDF
+
+# Export: PDF (optional)
 reportlab>=4.0.0
+
+# Testing
+pytest>=8.0.0
+httpx>=0.27.0
+
+# Legacy Streamlit (optional, for legacy/ only)
+# streamlit>=1.28.0

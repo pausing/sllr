@@ -1,127 +1,199 @@
 # Structured Lessons Learned Registry (SLLR)
 
-End-to-end methodology for capturing, classifying, storing, automating, and reusing lessons learned using **SharePoint**, **Python automation**, and **CSV databases**.
+Production web application for capturing, classifying, storing, automating, and reusing lessons learned. Built with **FastAPI**, **React**, and **CSV databases** (Power BI source of truth).
 
-## Objective and Guiding Principles
+## Architecture
 
-- **Institutionalize learning** across projects.
-- Lessons are **concise**, **structured**, **searchable**, and **embedded into standards**.
-- Narrative reports without reuse are explicitly avoided.
+- **Backend**: FastAPI 0.115+, Uvicorn, Python 3.12, Pydantic v2
+- **Frontend**: Vite 8, React 19, React Router 7, TypeScript, Tailwind CSS 4
+- **Data**: CSV files in `data/` (source of truth for Power BI)
+- **No Authentication**: Designed to sit behind LearnPower portal
+
+## Quick Start
+
+### Local Development
+
+**Backend:**
+
+```bash
+pip install -r requirements.txt
+uvicorn backend.app.main:app --reload --port 8000
+```
+
+**Frontend:**
+
+```bash
+cd frontend
+npm install
+npm run dev  # Runs on http://localhost:5173, proxies /api to backend
+```
+
+Visit http://localhost:5173
+
+### Docker Compose
+
+```bash
+docker-compose up --build
+```
+
+Visit http://localhost:8000
+
+### Production Deployment (Dokploy / Nixpacks)
+
+Deploy to port 8000. Nixpacks automatically:
+- Installs Node.js 22.14 via `scripts/install-node.sh`
+- Installs Python 3.12 dependencies
+- Builds frontend with `npm run build`
+- Serves API + static frontend via FastAPI
+
+**Environment Variables:**
+
+- `SLLR_DATA_DIR`: Path to CSV data (default: `data`). Mount a volume to `/data` in production.
+- `STATIC_DIR`: Frontend build directory (default: `frontend/dist`)
+- `CORS_ORIGINS`: Allowed CORS origins (default: `http://localhost:5173,http://127.0.0.1:5173`)
+- `SLLR_ROOT_PATH`: Optional root path for mounting under a subpath (e.g., `/sllr`)
+- `PORT`: Server port (default: 8000)
+
+**Volume:** Mount `/data` for persistent CSV storage.
+
+## API Endpoints
+
+- `GET /api/health` — Health check
+- `GET /api/references` — Controlled vocabularies
+- `GET /api/lessons` — List lessons (with filters)
+- `GET /api/lessons/{id}` — Get lesson by ID
+- `GET /api/lessons/next-id` — Suggest next available ID
+- `POST /api/lessons` — Create lesson (Status: Draft, Implementation Status: Not Implemented)
+- `PUT /api/lessons/{id}` — Update lesson (all fields except ID)
+- `PATCH /api/lessons/{id}` — Partial update (e.g., status or implementation_status)
+- `GET /api/kpis` — Compute governance KPIs
+- `GET /api/reports/validation` — Validation report (text)
+- `GET /api/reports/duplicates` — Duplicates report (text)
+- `GET /api/reports/kpi` — KPI summary (text)
+- `GET /api/reports/dashboard-export` — Dashboard CSV (with Validation_Errors column)
+- `POST /api/export/pdf` — Generate PDF (phase → category grouping, page breaks)
+- `POST /api/export/html` — Generate HTML (standalone with filters)
+
+## Frontend Pages
+
+- `/` — Dashboard (5 KPI cards + 4 bar charts)
+- `/lessons` — Browse table + filters + inline status updates
+- `/lessons/new` — Add new lesson (suggests next ID, saves as Draft)
+- `/lessons/:id` — Edit lesson (ID read-only)
+- `/approve` — Approve workflow (Draft → Approved)
+- `/implementation` — Implementation follow-up (track recommendations)
+- `/validation` — Validation errors
+- `/duplicates` — Exact + near duplicates
+- `/report` — Embedded HTML report (iframe)
+- `/export` — Download PDF / HTML
+- `/reports` — Download text reports + dashboard CSV
+
+## Data Model
+
+CSV schema defined in `src/sllr/config.py`. Required fields:
+
+- **Lesson ID** (unique, immutable after create)
+- **Title** (≤200 chars)
+- **Category** (controlled: Development, Engineering, Procurement, Construction, O&M)
+- **Technical Block** (controlled: Civil, HV & Grid, PV, BESS)
+- **Sub-category** (free text)
+- **Project Phase** (controlled: Development, Pre-Execution, Construction, O&M)
+- **Root Cause**
+- **What Happened**
+- **Impact**
+- **Lesson Learned** (≤500 chars)
+- **Recommendation**
+- **Status** (controlled: Draft, Approved)
+- **Implementation Status** (controlled: Not Implemented, Implemented)
+- **Owner**
+
+Optional: Recommendation Due Date (YYYY-MM-DD), Keywords, Created Date, Modified Date
+
+Controlled vocabularies in `data/*.csv`. API enforces exact, case-sensitive values.
+
+## Storage
+
+CSV files with file locking (fcntl). Last-write-wins is the current behavior; lock prevents torn reads/writes. No delete endpoint.
+
+## Tests
+
+```bash
+pytest
+```
+
+API tests use FastClient (no browser required for CI).
+
+## Legacy Streamlit App
+
+The original Streamlit UI is in `legacy/streamlit_app.py`. See `legacy/README.md` for instructions. **Deprecated** — use the FastAPI + React app.
+
+## Governance KPIs
+
+- **Total Lessons**
+- **Capture-to-Approval Time** (avg days)
+- **Repeated Issues** (same technical block / category / root cause pattern)
+- **% Recommendations Implemented** (among approved lessons)
+- **Overdue (Not Implemented)** (approved, past due date, not implemented)
+
+See `docs/GOVERNANCE_AND_KPIS.md` for definitions.
+
+## Power BI Integration
+
+Connect Power BI to `data/lessons_master.csv` or download `dashboard_export.csv` via `/api/reports/dashboard-export`. See `docs/POWER_BI_INTEGRATION.md`.
 
 ## Repository Layout
 
 ```
-lessonsLearned/
-├── app.py                   # Streamlit app (run: streamlit run app.py)
-├── data/                    # Data layer (CSV)
-│   ├── lessons_master.csv   # One row per lesson
-│   ├── categories.csv       # Development, Engineering, Procurement, Construction, O&M
-│   ├── technical_blocks.csv  # Civil, HV & Grid, PV, BESS
-│   ├── phases.csv           # Development, Pre-Execution, Construction, O&M
-│   └── statuses.csv         # Draft, Approved
-├── src/sllr/                # Logic layer (Python)
-│   ├── config.py            # Paths and schema
-│   ├── loaders.py           # Load reference CSVs and lessons master
-│   ├── validation.py        # Validate against schema and vocabularies
-│   ├── duplicate_detection.py
-│   ├── kpi.py               # KPI computation
-│   └── reports.py           # Management reports and dashboard export
-├── scripts/                 # Entry points
-│   ├── validate_lessons.py  # Validate lessons_master.csv
-│   ├── run_reports.py       # Generate all reports
-│   └── kpi_summary.py       # Print KPI summary
-├── reports/                 # Output (generated)
-│   ├── validation_report.txt
-│   ├── duplicates_report.txt
-│   ├── kpi_report.txt
-│   └── dashboard_export.csv # For Power BI
-└── docs/
-    ├── SHAREPOINT_LIST_SCHEMA.md
-    ├── POWER_BI_INTEGRATION.md
-    └── GOVERNANCE_AND_KPIS.md
+backend/app/              # FastAPI application
+  main.py                 # FastAPI app, CORS, static serving, routers
+  storage.py              # CSV I/O with file locking
+  routers/                # API routers (lessons, references, kpis, reports, export)
+frontend/                 # Vite + React + TypeScript
+  src/
+    pages/                # Dashboard, Lessons, Add, Edit, Approve, Implementation, Validation, Duplicates, Report, Export, Reports
+    components/           # Layout, UI components
+    lib/api.ts            # API client
+src/sllr/                 # Business logic (reused by backend)
+  config.py               # Paths, schema, controlled vocabularies
+  loaders.py              # CSV I/O
+  validation.py           # Schema validation
+  duplicate_detection.py  # Exact + near duplicates
+  kpi.py                  # KPI computation
+  reports.py              # Text reports + dashboard CSV
+  export_pdf.py           # PDF export (reportlab)
+  export_html.py          # HTML export
+data/                     # CSV data (lessons_master.csv + reference tables)
+scripts/                  # CLI tools (validate_lessons.py, run_reports.py, kpi_summary.py)
+  install-node.sh         # Node.js 22.14 installer (for Nixpacks)
+legacy/                   # Legacy Streamlit app (deprecated)
+tests/                    # Pytest API tests
+docs/                     # SharePoint schema, Power BI integration, governance
+Dockerfile                # Multi-stage build (Node + Python)
+docker-compose.yml        # Local Docker setup
+nixpacks.toml             # Dokploy / Nixpacks config
+.env.example              # Environment variables template
 ```
 
-## Quick Start
+## Development Notes
 
-### Streamlit app (recommended)
+- Reuse existing Python business logic (`src/sllr/`) — do not reimplement KPI/validation/duplicates/PDF/HTML
+- CSV is the source of truth (Power BI reads it)
+- File locking prevents torn reads/writes during concurrent access
+- API returns 409 on duplicate Lesson ID, 422 on validation errors
+- PDF export requires `reportlab` (optional dependency); returns 501 if missing
+- No auth (portal sits in front)
+- Tailwind 4 via `@tailwindcss/vite`
+- Dark theme: ink #0c0e12, panel #141820, raised #1b212c, line #2a3140, text #e8eaef, muted #8b93a7, blue #3b82f6
+- Font: IBM Plex Sans + IBM Plex Mono, 14px base
 
-From the project root:
+## Contributing
 
-```bash
-pip install -r requirements.txt
-streamlit run app.py
-```
+1. Branch: `git checkout -b feature/xyz`
+2. Backend: `uvicorn backend.app.main:app --reload`
+3. Frontend: `cd frontend && npm run dev`
+4. Test: `pytest`
+5. Commit and push
 
-Then open the URL (e.g. http://localhost:8501). Use the sidebar to switch between **Dashboard**, **Browse lessons**, **Add lesson**, **Validation**, **Duplicates**, and **Reports**.
+## License
 
-### CLI
-
-1. **Add lessons** to `data/lessons_master.csv` (or via the Streamlit **Add lesson** page; or sync from SharePoint; see docs).
-2. **Validate**:
-   ```bash
-   python scripts/validate_lessons.py
-   ```
-3. **View KPIs**:
-   ```bash
-   python scripts/kpi_summary.py
-   ```
-4. **Generate all reports** (validation, duplicates, KPI, dashboard CSV):
-   ```bash
-   python scripts/run_reports.py
-   ```
-
-## Lesson Data Model
-
-| Field | Description |
-|-------|-------------|
-| Lesson ID | Unique identifier |
-| Title | One-line action-oriented summary |
-| Category | Development, Engineering, Procurement, Construction, O&M |
-| Technical Block | Civil, HV & Grid, PV, BESS |
-| Sub-category | Detailed technical area or subcontracting package |
-| Project Phase | Development, Pre-Execution, Construction, O&M |
-| Root Cause | Underlying reason |
-| What Happened | Concise factual description |
-| Impact | Cost, schedule, quality, safety |
-| Lesson Learned | Single-sentence learning |
-| Recommendation | Mandatory future action |
-| Recommendation Due Date | Optional; target date for implementing the recommendation |
-| Keywords | Search tags |
-| Status | Draft, Approved (when creating, only Draft is allowed) |
-| Implementation Status | Not Implemented, Implemented (tracks whether recommendation was applied) |
-| Owner | Responsible role |
-| Created Date / Modified Date | Optional metadata |
-
-## Classification Axes (Controlled Values)
-
-- **Category**: Development, Engineering, Procurement, Construction, O&M  
-- **Technical Block**: Civil, HV & Grid, PV, BESS  
-- **Project Phase**: Development, Pre-Execution, Construction, O&M  
-- **Status**: Draft, Approved  
-- **Implementation Status**: Not Implemented, Implemented  
-
-Reference CSVs in `data/` define these; Python validation enforces them and prevents free-text drift.
-
-## Lifecycle
-
-**Capture (Draft) → Review → Approval → Implementation Follow Up**
-
-Use **Implementation Follow Up** (after approval) to mark recommendations as **Implemented** when the action has been taken. Set a **Recommendation Due Date** when adding a lesson to track overdue items.
-
-## Governance KPIs
-
-- **Repeated Issues** – same technical block / category / root cause
-- **Capture-to-Approval Time** – process efficiency
-- **% Recommendations Implemented** – share of approved lessons with recommendation implemented
-- **Overdue (not implemented)** – approved lessons past due date still not implemented
-
-See `docs/GOVERNANCE_AND_KPIS.md` for definitions and usage.
-
-## Dependencies
-
-Standard library only (no `pip` install required for core CSV workflow). See `requirements.txt`.
-
-## SharePoint and Power BI
-
-- **SharePoint**: Use `docs/SHAREPOINT_LIST_SCHEMA.md` to create the list and map columns; sync list data to `lessons_master.csv` for Python processing.
-- **Power BI**: Connect to `data/lessons_master.csv` or `reports/dashboard_export.csv`; see `docs/POWER_BI_INTEGRATION.md` for suggested visuals and KPIs.
+See project documentation.
