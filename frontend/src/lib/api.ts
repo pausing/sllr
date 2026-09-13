@@ -1,4 +1,4 @@
-const API_BASE = '/api'
+const API_BASE = '/sllr/api'
 
 export interface Lesson {
   'Lesson ID': string

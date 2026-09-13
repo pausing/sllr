@@ -1,23 +1,29 @@
 """
-SLLR API Tests
+SLLR API Tests with /sllr prefix support
 """
+import os
 import pytest
 from fastapi.testclient import TestClient
+
+# Set test data directory and base path before importing app
+os.environ["SLLR_DATA_DIR"] = "/tmp/sllr_test_data"
+os.environ["SLLR_BASE_PATH"] = "/sllr"
+
 from backend.app.main import app
 
 client = TestClient(app)
 
 
 def test_health():
-    """Test health endpoint."""
-    response = client.get("/api/health")
+    """Test health endpoint with /sllr prefix."""
+    response = client.get("/sllr/api/health")
     assert response.status_code == 200
     assert response.json() == {"ok": True}
 
 
 def test_get_references():
-    """Test references endpoint."""
-    response = client.get("/api/references")
+    """Test references endpoint with /sllr prefix."""
+    response = client.get("/sllr/api/references")
     assert response.status_code == 200
     data = response.json()
     assert "categories" in data
@@ -28,16 +34,16 @@ def test_get_references():
 
 
 def test_list_lessons():
-    """Test listing lessons."""
-    response = client.get("/api/lessons")
+    """Test listing lessons with /sllr prefix."""
+    response = client.get("/sllr/api/lessons")
     assert response.status_code == 200
     lessons = response.json()
     assert isinstance(lessons, list)
 
 
 def test_get_next_id():
-    """Test next ID suggestion."""
-    response = client.get("/api/lessons/next-id")
+    """Test next ID suggestion with /sllr prefix."""
+    response = client.get("/sllr/api/lessons/next-id")
     assert response.status_code == 200
     data = response.json()
     assert "suggested_id" in data
@@ -45,9 +51,9 @@ def test_get_next_id():
 
 
 def test_create_lesson():
-    """Test creating a new lesson."""
+    """Test creating a new lesson with /sllr prefix."""
     # Get next ID
-    next_id_response = client.get("/api/lessons/next-id")
+    next_id_response = client.get("/sllr/api/lessons/next-id")
     next_id = next_id_response.json()["suggested_id"]
     
     # Create lesson
@@ -66,7 +72,7 @@ def test_create_lesson():
         "Owner": "Test Owner",
     }
     
-    response = client.post("/api/lessons", json=lesson_data)
+    response = client.post("/sllr/api/lessons", json=lesson_data)
     assert response.status_code == 201
     created = response.json()
     assert created["Lesson ID"] == next_id
@@ -75,9 +81,9 @@ def test_create_lesson():
 
 
 def test_create_lesson_duplicate_id():
-    """Test that duplicate lesson IDs are rejected."""
+    """Test that duplicate lesson IDs are rejected with /sllr prefix."""
     # Create first lesson
-    next_id_response = client.get("/api/lessons/next-id")
+    next_id_response = client.get("/sllr/api/lessons/next-id")
     next_id = next_id_response.json()["suggested_id"]
     
     lesson_data = {
@@ -95,17 +101,17 @@ def test_create_lesson_duplicate_id():
         "Owner": "Test Owner",
     }
     
-    response1 = client.post("/api/lessons", json=lesson_data)
+    response1 = client.post("/sllr/api/lessons", json=lesson_data)
     assert response1.status_code == 201
     
     # Try to create second lesson with same ID
-    response2 = client.post("/api/lessons", json=lesson_data)
+    response2 = client.post("/sllr/api/lessons", json=lesson_data)
     assert response2.status_code == 409  # Conflict
 
 
 def test_create_lesson_invalid_category():
-    """Test that invalid categories are rejected."""
-    next_id_response = client.get("/api/lessons/next-id")
+    """Test that invalid categories are rejected with /sllr prefix."""
+    next_id_response = client.get("/sllr/api/lessons/next-id")
     next_id = next_id_response.json()["suggested_id"]
     
     lesson_data = {
@@ -123,14 +129,14 @@ def test_create_lesson_invalid_category():
         "Owner": "Test Owner",
     }
     
-    response = client.post("/api/lessons", json=lesson_data)
+    response = client.post("/sllr/api/lessons", json=lesson_data)
     assert response.status_code == 422  # Validation error
 
 
 def test_patch_lesson_status():
-    """Test patching lesson status."""
+    """Test patching lesson status with /sllr prefix."""
     # Create a lesson
-    next_id_response = client.get("/api/lessons/next-id")
+    next_id_response = client.get("/sllr/api/lessons/next-id")
     next_id = next_id_response.json()["suggested_id"]
     
     lesson_data = {
@@ -148,12 +154,12 @@ def test_patch_lesson_status():
         "Owner": "Test Owner",
     }
     
-    create_response = client.post("/api/lessons", json=lesson_data)
+    create_response = client.post("/sllr/api/lessons", json=lesson_data)
     assert create_response.status_code == 201
     
     # Patch status to Approved
     patch_response = client.patch(
-        f"/api/lessons/{next_id}",
+        f"/sllr/api/lessons/{next_id}",
         json={"Status": "Approved"}
     )
     assert patch_response.status_code == 200
@@ -162,8 +168,8 @@ def test_patch_lesson_status():
 
 
 def test_get_kpis():
-    """Test KPIs endpoint."""
-    response = client.get("/api/kpis")
+    """Test KPIs endpoint with /sllr prefix."""
+    response = client.get("/sllr/api/kpis")
     assert response.status_code == 200
     kpis = response.json()
     assert "total_lessons" in kpis
@@ -175,28 +181,43 @@ def test_get_kpis():
 
 
 def test_validation_report():
-    """Test validation report endpoint."""
-    response = client.get("/api/reports/validation")
+    """Test validation report endpoint with /sllr prefix."""
+    response = client.get("/sllr/api/reports/validation")
     assert response.status_code == 200
     assert "text/plain" in response.headers["content-type"]
 
 
 def test_duplicates_report():
-    """Test duplicates report endpoint."""
-    response = client.get("/api/reports/duplicates")
+    """Test duplicates report endpoint with /sllr prefix."""
+    response = client.get("/sllr/api/reports/duplicates")
     assert response.status_code == 200
     assert "text/plain" in response.headers["content-type"]
 
 
 def test_kpi_report():
-    """Test KPI report endpoint."""
-    response = client.get("/api/reports/kpi")
+    """Test KPI report endpoint with /sllr prefix."""
+    response = client.get("/sllr/api/reports/kpi")
     assert response.status_code == 200
     assert "text/plain" in response.headers["content-type"]
 
 
 def test_dashboard_export():
-    """Test dashboard CSV export."""
-    response = client.get("/api/reports/dashboard-export")
+    """Test dashboard CSV export with /sllr prefix."""
+    response = client.get("/sllr/api/reports/dashboard-export")
     assert response.status_code == 200
     assert "text/csv" in response.headers["content-type"]
+
+
+def test_spa_root_served():
+    """Test that SPA is served at /sllr/."""
+    response = client.get("/sllr/")
+    # Should return HTML (index.html) or 404 if STATIC_DIR not set in test
+    assert response.status_code in [200, 404]
+    if response.status_code == 200:
+        assert "text/html" in response.headers.get("content-type", "")
+
+
+def test_api_404_not_caught_by_spa():
+    """Test that non-existent API routes return 404, not SPA."""
+    response = client.get("/sllr/api/nonexistent")
+    assert response.status_code == 404

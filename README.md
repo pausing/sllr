@@ -48,31 +48,72 @@ Deploy to port 8000. Nixpacks automatically:
 
 **Environment Variables:**
 
+- `SLLR_BASE_PATH`: Base path prefix for portal deployment (default: `/sllr`). Set to `/sllr` for deployment behind Traefik at `https://portal.powerlearn.us/sllr`.
 - `SLLR_DATA_DIR`: Path to CSV data (default: `data`). Mount a volume to `/data` in production.
 - `STATIC_DIR`: Frontend build directory (default: `frontend/dist`)
-- `CORS_ORIGINS`: Allowed CORS origins (default: `http://localhost:5173,http://127.0.0.1:5173`)
-- `SLLR_ROOT_PATH`: Optional root path for mounting under a subpath (e.g., `/sllr`)
+- `CORS_ORIGINS`: Additional allowed CORS origins (comma-separated). Portal origin `https://portal.powerlearn.us` is included by default.
 - `PORT`: Server port (default: 8000)
 
 **Volume:** Mount `/data` for persistent CSV storage.
 
+### Portal Deployment at /sllr
+
+This app is designed to run behind the LearnPower portal at `https://portal.powerlearn.us/sllr`.
+
+**Traefik Configuration:**
+- **Host**: `portal.powerlearn.us`
+- **Path**: `/sllr`
+- **Strip Path**: OFF (paths arrive as `/sllr/...` and `/sllr/api/...`)
+- **Container Port**: 8000
+
+**Required Environment Variables for Portal:**
+```bash
+SLLR_BASE_PATH=/sllr
+SLLR_DATA_DIR=/data
+STATIC_DIR=frontend/dist
+CORS_ORIGINS=https://portal.powerlearn.us
+PORT=8000
+```
+
+The app will serve:
+- Frontend SPA at `/sllr/`
+- API endpoints at `/sllr/api/*`
+- Health check at `/sllr/api/health`
+
+**Local Development without Prefix:**
+
+For local development without the `/sllr` prefix:
+```bash
+# Backend (no SLLR_BASE_PATH set)
+uvicorn backend.app.main:app --reload --port 8000
+
+# Frontend (no VITE_BASE set)
+VITE_BASE=/ npm run dev
+```
+
+This runs the app at `http://localhost:5173` with API at `/api/*` (proxied to backend).
+
 ## API Endpoints
 
-- `GET /api/health` — Health check
-- `GET /api/references` — Controlled vocabularies
-- `GET /api/lessons` — List lessons (with filters)
-- `GET /api/lessons/{id}` — Get lesson by ID
-- `GET /api/lessons/next-id` — Suggest next available ID
-- `POST /api/lessons` — Create lesson (Status: Draft, Implementation Status: Not Implemented)
-- `PUT /api/lessons/{id}` — Update lesson (all fields except ID)
-- `PATCH /api/lessons/{id}` — Partial update (e.g., status or implementation_status)
-- `GET /api/kpis` — Compute governance KPIs
-- `GET /api/reports/validation` — Validation report (text)
-- `GET /api/reports/duplicates` — Duplicates report (text)
-- `GET /api/reports/kpi` — KPI summary (text)
-- `GET /api/reports/dashboard-export` — Dashboard CSV (with Validation_Errors column)
-- `POST /api/export/pdf` — Generate PDF (phase → category grouping, page breaks)
-- `POST /api/export/html` — Generate HTML (standalone with filters)
+All endpoints are prefixed with the base path (default `/sllr`):
+
+- `GET /sllr/api/health` — Health check
+- `GET /sllr/api/references` — Controlled vocabularies
+- `GET /sllr/api/lessons` — List lessons (with filters)
+- `GET /sllr/api/lessons/{id}` — Get lesson by ID
+- `GET /sllr/api/lessons/next-id` — Suggest next available ID
+- `POST /sllr/api/lessons` — Create lesson (Status: Draft, Implementation Status: Not Implemented)
+- `PUT /sllr/api/lessons/{id}` — Update lesson (all fields except ID)
+- `PATCH /sllr/api/lessons/{id}` — Partial update (e.g., status or implementation_status)
+- `GET /sllr/api/kpis` — Compute governance KPIs
+- `GET /sllr/api/reports/validation` — Validation report (text)
+- `GET /sllr/api/reports/duplicates` — Duplicates report (text)
+- `GET /sllr/api/reports/kpi` — KPI summary (text)
+- `GET /sllr/api/reports/dashboard-export` — Dashboard CSV (with Validation_Errors column)
+- `POST /sllr/api/export/pdf` — Generate PDF (phase → category grouping, page breaks)
+- `POST /sllr/api/export/html` — Generate HTML (standalone with filters)
+
+*Note: For local development without the prefix, endpoints are at `/api/*` directly.*
 
 ## Frontend Pages
 
