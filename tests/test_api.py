@@ -14,11 +14,25 @@ from backend.app.main import app
 client = TestClient(app)
 
 
-def test_health():
-    """Test health endpoint with /sllr prefix."""
+def test_health_sllr():
+    """Test health endpoint at /sllr/api/health."""
     response = client.get("/sllr/api/health")
     assert response.status_code == 200
     assert response.json() == {"ok": True}
+
+
+def test_health_root():
+    """Test health endpoint at /api/health (root path)."""
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+
+
+def test_sllr_redirect():
+    """Test that /sllr redirects to /sllr/."""
+    response = client.get("/sllr", follow_redirects=False)
+    assert response.status_code == 307
+    assert response.headers["location"] == "/sllr/"
 
 
 def test_get_references():
