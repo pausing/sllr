@@ -1,19 +1,13 @@
 import { useEffect, useState } from 'react'
-import { api, Lesson } from '../lib/api'
 import { Card } from '../components/ui'
 
 export function Report() {
-  const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
   const [htmlContent, setHtmlContent] = useState('')
 
   useEffect(() => {
-    api.getLessons()
-      .then((l) => {
-        setLessons(l)
-        // Fetch HTML report content
-        return fetch('/api/export/html', { method: 'POST' })
-      })
+    // Fetch HTML report content
+    fetch('/api/export/html', { method: 'POST' })
       .then((res) => res.text())
       .then(setHtmlContent)
       .catch(console.error)

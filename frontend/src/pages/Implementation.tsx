@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, Lesson, References } from '../lib/api'
-import { Card, Select, StatusDot } from '../components/ui'
+import { Card, Select } from '../components/ui'
 
 export function Implementation() {
   const [lessons, setLessons] = useState<Lesson[]>([])
