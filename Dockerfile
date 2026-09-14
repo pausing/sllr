@@ -42,6 +42,7 @@ ENV SLLR_DATA_DIR=/data
 ENV STATIC_DIR=frontend/dist
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8000
+ENV PYTHONPATH=/app:/app/src
 
 # Volume for persistent data
 VOLUME /data
@@ -49,4 +50,4 @@ VOLUME /data
 EXPOSE 8000
 
 # Run FastAPI with Uvicorn
-CMD ["sh", "-c", "uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT}"]
+CMD ["sh", "-c", "PYTHONPATH=/app:/app/src uvicorn backend.app.main:app --host 0.0.0.0 --port 8000"]
