@@ -127,15 +127,11 @@ if STATIC_DIR is not None and STATIC_DIR.is_dir():
     def spa_base_root():
         return FileResponse(STATIC_DIR / "index.html")
 
-    @app.get("/{full_path:path}")
-    def spa_path(full_path: str):
+    # Register /sllr/{full_path:path} BEFORE /{full_path:path} so it matches first
+    @app.get(f"{BASE_PATH}/{{full_path:path}}")
+    def spa_base_path(full_path: str):
         # Don't catch API routes
         if full_path == "api" or full_path.startswith("api/"):
-            raise HTTPException(status_code=404)
-        # Don't catch BASE_PATH routes (they have their own handlers)
-        if full_path == BASE_PATH.lstrip("/"):
-            raise HTTPException(status_code=404)
-        if full_path.startswith(f"{BASE_PATH.lstrip('/')}/"):
             raise HTTPException(status_code=404)
         # Try to serve static file
         found = _safe_static(full_path)
@@ -144,8 +140,8 @@ if STATIC_DIR is not None and STATIC_DIR.is_dir():
         # Fallback to SPA
         return FileResponse(STATIC_DIR / "index.html")
 
-    @app.get(f"{BASE_PATH}/{{full_path:path}}")
-    def spa_base_path(full_path: str):
+    @app.get("/{full_path:path}")
+    def spa_path(full_path: str):
         # Don't catch API routes
         if full_path == "api" or full_path.startswith("api/"):
             raise HTTPException(status_code=404)

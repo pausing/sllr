@@ -235,3 +235,21 @@ def test_api_404_not_caught_by_spa():
     """Test that non-existent API routes return 404, not SPA."""
     response = client.get("/sllr/api/nonexistent")
     assert response.status_code == 404
+
+
+def test_sllr_assets_not_caught_by_root_catchall():
+    """Test that /sllr/assets/ paths are handled by /sllr/{full_path:path}, not /{full_path:path}."""
+    # Request a non-existent JS file under /sllr/assets/
+    response = client.get("/sllr/assets/nonexistent.js")
+    assert response.status_code == 404
+    # Should NOT return HTML (index.html)
+    content_type = response.headers.get("content-type", "")
+    assert "text/html" not in content_type
+
+
+def test_sllr_assets_css_404():
+    """Test that non-existent CSS files under /sllr/assets/ return 404, not SPA."""
+    response = client.get("/sllr/assets/nonexistent.css")
+    assert response.status_code == 404
+    content_type = response.headers.get("content-type", "")
+    assert "text/html" not in content_type
