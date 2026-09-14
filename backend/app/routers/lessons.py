@@ -4,8 +4,8 @@ Lessons API router - CRUD operations for lessons.
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field, field_validator
+from fastapi import APIRouter, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 
 from backend.app.storage import (
     load_lessons_with_lock,
@@ -14,6 +14,7 @@ from backend.app.storage import (
     lesson_id_exists,
     suggest_next_id,
 )
+from backend.app.identity import resolve_owner
 from src.sllr.config import LESSON_SCHEMA
 from src.sllr.loaders import load_all_references
 from src.sllr.validation import validate_lesson
@@ -37,7 +38,7 @@ class LessonCreate(BaseModel):
     recommendation: str = Field(..., alias="Recommendation")
     recommendation_due_date: Optional[str] = Field(None, alias="Recommendation Due Date")
     keywords: Optional[str] = Field("", alias="Keywords")
-    owner: str = Field(..., alias="Owner")
+    owner: Optional[str] = Field(None, alias="Owner")
 
     class Config:
         populate_by_name = True
@@ -135,10 +136,11 @@ async def get_lesson(lesson_id: str):
 
 
 @router.post("/lessons", status_code=201)
-async def create_lesson(lesson: LessonCreate):
+async def create_lesson(lesson: LessonCreate, request: Request):
     """
     Create a new lesson. Status is forced to Draft, Implementation Status to Not Implemented.
     Returns 409 if lesson ID already exists, 422 if validation fails.
+    Owner defaults to X-Powerlearn-Email when the client omits it.
     """
     # Check for duplicate ID
     if lesson_id_exists(lesson.lesson_id):
@@ -162,7 +164,7 @@ async def create_lesson(lesson: LessonCreate):
         "Keywords": lesson.keywords or "",
         "Status": "Draft",
         "Implementation Status": "Not Implemented",
-        "Owner": lesson.owner,
+        "Owner": resolve_owner(lesson.owner, request),
         "Created Date": now,
         "Modified Date": now,
     }
@@ -182,7 +184,7 @@ async def create_lesson(lesson: LessonCreate):
 
 
 @router.put("/lessons/{lesson_id}")
-async def update_lesson(lesson_id: str, lesson: LessonUpdate):
+async def update_lesson(lesson_id: str, lesson: LessonUpdate, request: Request):
     """
     Update a lesson (full update except Lesson ID).
     """
@@ -223,8 +225,7 @@ async def update_lesson(lesson_id: str, lesson: LessonUpdate):
         updated["Status"] = lesson.status
     if lesson.implementation_status is not None:
         updated["Implementation Status"] = lesson.implementation_status
-    if lesson.owner is not None:
-        updated["Owner"] = lesson.owner
+    updated["Owner"] = resolve_owner(lesson.owner, request, existing.get("Owner"))
     
     updated["Modified Date"] = now
     
@@ -243,7 +244,7 @@ async def update_lesson(lesson_id: str, lesson: LessonUpdate):
 
 
 @router.patch("/lessons/{lesson_id}")
-async def patch_lesson(lesson_id: str, patch: LessonPatch):
+async def patch_lesson(lesson_id: str, patch: LessonPatch, request: Request):
     """
     Patch a lesson (partial update). Commonly used for status/implementation_status changes.
     """
@@ -284,8 +285,7 @@ async def patch_lesson(lesson_id: str, patch: LessonPatch):
         patched["Recommendation Due Date"] = patch.recommendation_due_date
     if patch.keywords is not None:
         patched["Keywords"] = patch.keywords
-    if patch.owner is not None:
-        patched["Owner"] = patch.owner
+    patched["Owner"] = resolve_owner(patch.owner, request, existing.get("Owner"))
     
     patched["Modified Date"] = now
     

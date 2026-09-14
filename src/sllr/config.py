@@ -1,11 +1,26 @@
 """
 SLLR configuration: paths and controlled vocabulary file names.
 """
+import os
 from pathlib import Path
 
 # Project root (parent of src)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+# Reference CSVs always live in the repo data/ directory.
 DATA_DIR = PROJECT_ROOT / "data"
+
+
+def get_lessons_master_path() -> Path:
+    """Resolve lessons_master.csv at call time so KPI and API cannot drift.
+
+    ``SLLR_DATA_DIR`` (default ``data``) selects the directory. The relative
+    default ``data`` always maps to ``PROJECT_ROOT / data``, not cwd.
+    """
+    raw = (os.getenv("SLLR_DATA_DIR") or "data").strip() or "data"
+    data_dir = Path(raw)
+    if data_dir == Path("data"):
+        return DATA_DIR / "lessons_master.csv"
+    return data_dir / "lessons_master.csv"
 
 # Reference CSV files (controlled vocabularies)
 REFERENCE_FILES = {

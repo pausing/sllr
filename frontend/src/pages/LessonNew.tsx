@@ -27,11 +27,15 @@ export function LessonNew() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    Promise.all([api.getReferences(), api.getNextId()])
-      .then(([r, n]) => {
+    Promise.all([api.getReferences(), api.getNextId(), api.getMe().catch(() => null)])
+      .then(([r, n, me]) => {
         setRefs(r)
         setNextId(n.suggested_id)
-        setFormData(f => ({ ...f, 'Lesson ID': n.suggested_id }))
+        setFormData(f => ({
+          ...f,
+          'Lesson ID': n.suggested_id,
+          Owner: f.Owner || me?.email || '',
+        }))
       })
       .catch(console.error)
   }, [])

@@ -14,7 +14,7 @@ from starlette.responses import Response
 from starlette.staticfiles import NotModifiedResponse, StaticFiles
 from starlette.types import Scope
 
-from backend.app.routers import lessons, references, kpis, reports, export as export_router
+from backend.app.routers import lessons, references, kpis, reports, export as export_router, me
 
 # Nixpacks/Nix images often have no /etc/mime.types. Without these, FileResponse
 # falls back to application/octet-stream and the browser refuses <script type="module">.
@@ -165,6 +165,7 @@ def create_app() -> FastAPI:
         app.include_router(kpis.router, prefix=prefix, tags=["kpis"])
         app.include_router(reports.router, prefix=prefix, tags=["reports"])
         app.include_router(export_router.router, prefix=prefix, tags=["export"])
+        app.include_router(me.router, prefix=prefix, tags=["me"])
 
     @app.get("/api/health")
     async def health_root():

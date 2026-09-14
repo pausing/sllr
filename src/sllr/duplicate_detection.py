@@ -36,7 +36,8 @@ def find_duplicates(
     Find groups of lessons that share the same signature (exact duplicate content).
     Returns list of groups; each group is a list of row dicts that are duplicates.
     """
-    rows = rows or load_lessons_master()
+    if rows is None:
+        rows = load_lessons_master()
     if not rows:
         return []
 
@@ -57,7 +58,8 @@ def find_near_duplicates(
     Find potential near-duplicates based on title word overlap (Jaccard-like).
     Returns list of (row1, row2, similarity_0_to_1).
     """
-    rows = rows or load_lessons_master()
+    if rows is None:
+        rows = load_lessons_master()
     if len(rows) < 2:
         return []
 

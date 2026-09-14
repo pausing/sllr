@@ -4,25 +4,20 @@ Last-write-wins is the current behavior; lock prevents torn reads/writes.
 """
 import csv
 import fcntl
-import os
 from pathlib import Path
 from typing import Any, Optional
 
-from src.sllr.config import LESSONS_MASTER, LESSON_SCHEMA
+from src.sllr.config import LESSON_SCHEMA, get_lessons_master_path
 
 
 def get_data_dir() -> Path:
-    """Get the data directory from environment or default."""
-    data_dir = os.getenv("SLLR_DATA_DIR", "data")
-    return Path(data_dir)
+    """Directory that holds lessons_master.csv (same resolution as sllr.config)."""
+    return get_lessons_master_path().parent
 
 
 def get_lessons_path() -> Path:
-    """Get the lessons master CSV path."""
-    data_dir = get_data_dir()
-    if data_dir == Path("data"):
-        return LESSONS_MASTER
-    return data_dir / "lessons_master.csv"
+    """Get the lessons master CSV path (shared with load_lessons_master)."""
+    return get_lessons_master_path()
 
 
 def load_lessons_with_lock() -> list[dict[str, Any]]:

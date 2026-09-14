@@ -12,7 +12,7 @@ from src.sllr.config import LESSON_SCHEMA
 from src.sllr.loaders import load_all_references
 from src.sllr.validation import validate_lessons_file
 from src.sllr.duplicate_detection import find_duplicates, find_near_duplicates
-from src.sllr.kpi import kpi_summary_text
+from src.sllr.kpi import compute_kpis, kpi_summary_text
 from src.sllr.validation import validate_lesson
 
 
@@ -81,7 +81,8 @@ async def kpi_report():
     """
     Generate KPI summary as plain text.
     """
-    return kpi_summary_text()
+    lessons = load_lessons_with_lock()
+    return kpi_summary_text(compute_kpis(lessons))
 
 
 @router.get("/reports/dashboard-export")
