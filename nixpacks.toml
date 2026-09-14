@@ -9,6 +9,7 @@ NIXPACKS_PYTHON_VERSION = "3.12"
 NODE_OPTIONS = "--max-old-space-size=1536"
 STATIC_DIR = "frontend/dist"
 SLLR_BASE_PATH = "/sllr"
+SLLR_DATA_DIR = "data"
 VITE_BASE = "/sllr/"
 
 [phases.setup]
@@ -27,4 +28,4 @@ cmds = [
 cmds = ["export PATH=/usr/local/bin:$PATH && cd frontend && npm run build"]
 
 [start]
-cmd = "uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+cmd = "uvicorn backend.app.main:app --host 0.0.0.0 --port 8000"
