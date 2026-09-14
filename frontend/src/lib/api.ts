@@ -30,6 +30,7 @@ export interface References {
 }
 
 export interface PortalMe {
+  id?: string | null
   user_id: string | null
   email: string | null
   admin: boolean | null
@@ -53,7 +54,17 @@ export const api = {
   async getMe(): Promise<PortalMe> {
     const res = await fetch(`${API_BASE}/me`)
     if (!res.ok) throw new Error('Failed to fetch current user')
-    return res.json()
+    const data = await res.json()
+    if (data == null || typeof data !== 'object') {
+      throw new Error('Failed to fetch current user')
+    }
+    const user = data as Partial<PortalMe> & { id?: string | null }
+    return {
+      id: user.id ?? user.user_id ?? null,
+      user_id: user.user_id ?? user.id ?? null,
+      email: user.email ?? null,
+      admin: user.admin ?? null,
+    }
   },
 
   async getReferences(): Promise<References> {

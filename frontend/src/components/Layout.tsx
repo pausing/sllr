@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react'
 import { Outlet, Link, useLocation } from 'react-router'
+import { api, PortalMe } from '../lib/api'
 
 const NAV_ITEMS = [
   { path: '/', label: 'Dashboard' },
@@ -13,9 +15,49 @@ const NAV_ITEMS = [
   { path: '/reports', label: 'Reports' },
 ]
 
+function normalizePath(pathname: string): string {
+  if (pathname !== '/' && pathname.endsWith('/')) {
+    return pathname.replace(/\/+$/, '')
+  }
+  return pathname
+}
+
+/** Longest nav prefix wins. `/` is exact. `/lessons/:id` highlights Browse. */
+function isNavActive(pathname: string, itemPath: string): boolean {
+  const path = normalizePath(pathname)
+  if (itemPath === '/') {
+    return path === '/'
+  }
+  const matches = NAV_ITEMS.filter((item) => {
+    if (item.path === '/') return false
+    return path === item.path || path.startsWith(`${item.path}/`)
+  })
+  const winner = matches.sort((a, b) => b.path.length - a.path.length)[0]
+  return winner?.path === itemPath
+}
+
 export function Layout() {
   const location = useLocation()
-  
+  const [me, setMe] = useState<PortalMe | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    api
+      .getMe()
+      .then((user) => {
+        if (cancelled) return
+        if (user?.email) setMe(user)
+      })
+      .catch(() => {
+        /* ForwardAuth missing or /me failed — keep chrome intact */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const email = me?.email?.trim() ?? ''
+
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
@@ -23,14 +65,22 @@ export function Layout() {
         <div className="p-6 border-b border-line">
           <h1 className="text-xl font-bold text-text">📋 SLLR</h1>
           <p className="text-sm text-muted mt-1">Lessons Learned Registry</p>
+          {email ? (
+            <p className="mt-3 text-sm text-muted break-all" title={email}>
+              Hola, {email}
+              {me?.admin ? (
+                <span className="ml-2 inline-block align-middle rounded border border-line px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted">
+                  admin
+                </span>
+              ) : null}
+            </p>
+          ) : null}
         </div>
         <nav className="p-4">
           <ul className="space-y-1">
             {NAV_ITEMS.map((item) => {
-              const isActive = item.path === '/' 
-                ? location.pathname === '/'
-                : location.pathname.startsWith(item.path) && item.path !== '/'
-              
+              const isActive = isNavActive(location.pathname, item.path)
+
               return (
                 <li key={item.path}>
                   <Link
