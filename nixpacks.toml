@@ -1,17 +1,29 @@
+# Dokploy Application — Build type: Nixpacks
+# Python API + Vite UI. Official Node 22.14 is installed because Nixpacks
+# nodejs_22 is 22.10, which cannot install Vite 8 (Rolldown binding requires >= 22.12).
+
+providers = ["python"]
+
+[variables]
+NIXPACKS_PYTHON_VERSION = "3.12"
+NODE_OPTIONS = "--max-old-space-size=1536"
+STATIC_DIR = "frontend/dist"
+SLLR_BASE_PATH = "/sllr"
+VITE_BASE = "/sllr/"
+
 [phases.setup]
-nixPkgs = ['python312', 'nodejs_22']
+nixPkgs = ["..."]
+aptPkgs = ["curl", "xz-utils", "ca-certificates"]
 
 [phases.install]
 cmds = [
-  'bash scripts/install-node.sh',
-  'pip install -r requirements.txt',
-  'cd frontend && npm ci'
+  "bash scripts/install-node.sh",
+  "pip install -r requirements.txt",
+  "export PATH=/usr/local/bin:$PATH && cd frontend && npm ci --include=dev --include=optional",
 ]
 
 [phases.build]
-cmds = [
-  'cd frontend && npm run build'
-]
+cmds = ["export PATH=/usr/local/bin:$PATH && cd frontend && npm run build"]
 
 [start]
-cmd = 'uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-8000}'
+cmd = "uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
