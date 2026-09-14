@@ -253,3 +253,22 @@ def test_sllr_assets_css_404():
     assert response.status_code == 404
     content_type = response.headers.get("content-type", "")
     assert "text/html" not in content_type
+
+
+def test_missing_asset_nope_js_is_404_not_html():
+    """Missing hashed JS must 404, never SPA HTML (wrong MIME white-screen)."""
+    response = client.get("/sllr/assets/nope.js")
+    assert response.status_code == 404
+    assert "text/html" not in response.headers.get("content-type", "")
+
+
+def test_static_info_without_dist():
+    """Debug route works even when STATIC_DIR is unset in tests."""
+    for path in ("/api/static-info", "/sllr/api/static-info"):
+        response = client.get(path)
+        assert response.status_code == 200, path
+        data = response.json()
+        assert "static_dir" in data
+        assert "exists" in data
+        assert "assets" in data
+        assert isinstance(data["assets"], list)
