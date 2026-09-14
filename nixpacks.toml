@@ -17,6 +17,7 @@ aptPkgs = ["curl", "xz-utils", "ca-certificates"]
 
 [phases.install]
 cmds = [
+  "...",
   "bash scripts/install-node.sh",
   "pip install -r requirements.txt",
   "export PATH=/usr/local/bin:$PATH && cd frontend && npm ci --include=dev --include=optional",

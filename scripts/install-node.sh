@@ -12,5 +12,6 @@ PREFIX="${NODE_INSTALL_PREFIX:-/usr/local}"
 curl -fsSLo /tmp/node.tar.xz "https://nodejs.org/dist/v${VERSION}/node-v${VERSION}-linux-${NODE_ARCH}.tar.xz"
 tar -xJf /tmp/node.tar.xz -C "$PREFIX" --strip-components=1
 rm -f /tmp/node.tar.xz
+export PATH="$PREFIX/bin:$PATH"
 hash -r
 echo "installed $(node -v) $(npm -v)"
