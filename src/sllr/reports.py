@@ -5,11 +5,11 @@ import csv
 from pathlib import Path
 from typing import Any
 
-from sllr.config import LESSON_SCHEMA, PROJECT_ROOT
-from sllr.duplicate_detection import find_duplicates, find_near_duplicates
-from sllr.kpi import compute_kpis, kpi_summary_text
-from sllr.loaders import load_lessons_master
-from sllr.validation import validate_lessons_file
+from .config import LESSON_SCHEMA, PROJECT_ROOT
+from .duplicate_detection import find_duplicates, find_near_duplicates
+from .kpi import compute_kpis, kpi_summary_text
+from .loaders import load_lessons_master
+from .validation import validate_lessons_file
 
 
 def generate_validation_report(output_path: Path | None = None) -> str:
@@ -78,8 +78,8 @@ def export_dashboard_csv(output_path: Path | None = None) -> Path:
     Export a flat CSV suitable for Power BI: lessons plus Validation_Errors.
     """
     rows = load_lessons_master()
-    from sllr.validation import validate_lesson
-    from sllr.loaders import load_all_references
+    from .validation import validate_lesson
+    from .loaders import load_all_references
     refs = load_all_references()
     fieldnames = list(LESSON_SCHEMA.keys()) + ["Validation_Errors"]
     out_rows: list[dict[str, Any]] = []

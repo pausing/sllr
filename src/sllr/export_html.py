@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from sllr.config import PROJECT_ROOT
+from .config import PROJECT_ROOT
 
 
 def _escape(s: str) -> str:

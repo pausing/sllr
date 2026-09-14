@@ -56,7 +56,7 @@ REF_CODE_COLUMN = "code"
 
 # Lesson columns and their reference (if any).
 # When creating a new lesson, only Status "Draft" is allowed.
-LESSSON_SCHEMA = {
+LESSON_SCHEMA = {
     "Lesson ID": {"required": True, "reference": None},
     "Title": {"required": True, "reference": None},
     "Category": {"required": True, "reference": "categories"},

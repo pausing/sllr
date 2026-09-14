@@ -6,10 +6,10 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from sllr.export_html import build_html
+from .export_html import build_html
 
 try:
-    from sllr.export_html import build_html_string
+    from .export_html import build_html_string
 except ImportError:
     build_html_string = None  # type: ignore[misc, assignment]
 

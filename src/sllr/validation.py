@@ -3,8 +3,8 @@ Validate lesson rows against schema and controlled vocabularies.
 """
 from typing import Any
 
-from sllr.config import LESSON_SCHEMA
-from sllr.loaders import load_all_references
+from .config import LESSON_SCHEMA
+from .loaders import load_all_references
 
 
 def validate_lesson(
