@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Outlet, Link, useLocation } from 'react-router'
 import { api, PortalMe } from '../lib/api'
 
+const PORTAL_URL = 'https://portal.powerlearn.us/'
+
 const NAV_ITEMS = [
   { path: '/', label: 'Dashboard' },
   { path: '/lessons', label: 'Browse Lessons' },
@@ -59,51 +61,61 @@ export function Layout() {
   const email = me?.email?.trim() ?? ''
 
   return (
-    <div className="flex min-h-screen">
-      {/* Sidebar */}
-      <aside className="w-64 bg-panel border-r border-line">
-        <div className="p-6 border-b border-line">
-          <h1 className="text-xl font-bold text-text">📋 SLLR</h1>
-          <p className="text-sm text-muted mt-1">Lessons Learned Registry</p>
-          {email ? (
-            <p className="mt-3 text-sm text-muted break-all" title={email}>
-              Hola, {email}
-              {me?.admin ? (
-                <span className="ml-2 inline-block align-middle rounded border border-line px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted">
-                  admin
-                </span>
-              ) : null}
-            </p>
-          ) : null}
+    <div className="flex min-h-screen flex-col">
+      <header className="flex h-11 shrink-0 items-center justify-between gap-4 border-b border-line bg-panel px-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-accent">
+            Lessons Learned
+          </div>
+          <a
+            href={PORTAL_URL}
+            className="shrink-0 text-[11px] uppercase tracking-[0.18em] text-muted hover:text-text"
+          >
+            Portal
+          </a>
         </div>
-        <nav className="p-4">
-          <ul className="space-y-1">
-            {NAV_ITEMS.map((item) => {
-              const isActive = isNavActive(location.pathname, item.path)
+        {email ? (
+          <p className="truncate text-[13px] text-muted">
+            Hello, <span className="text-text">{email}</span>
+            {me?.admin ? (
+              <span className="ml-2 inline-block align-middle rounded border border-line px-1 py-px text-[9px] uppercase tracking-wide text-muted">
+                admin
+              </span>
+            ) : null}
+          </p>
+        ) : null}
+      </header>
 
-              return (
-                <li key={item.path}>
-                  <Link
-                    to={item.path}
-                    className={`block px-3 py-2 rounded-md text-sm transition-colors ${
-                      isActive
-                        ? 'bg-accent-dim text-accent font-medium'
-                        : 'text-muted hover:text-text hover:bg-raised'
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        </nav>
-      </aside>
-      
-      {/* Main content */}
-      <main className="flex-1 p-8 overflow-auto">
-        <Outlet />
-      </main>
+      <div className="flex min-h-0 flex-1">
+        <aside className="w-64 shrink-0 border-r border-line bg-panel">
+          <nav className="p-4">
+            <ul className="space-y-1">
+              {NAV_ITEMS.map((item) => {
+                const isActive = isNavActive(location.pathname, item.path)
+
+                return (
+                  <li key={item.path}>
+                    <Link
+                      to={item.path}
+                      className={`block rounded-md px-3 py-2 text-sm transition-colors ${
+                        isActive
+                          ? 'bg-accent-dim font-medium text-accent'
+                          : 'text-muted hover:bg-raised hover:text-text'
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </nav>
+        </aside>
+
+        <main className="flex-1 overflow-auto p-8">
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }
