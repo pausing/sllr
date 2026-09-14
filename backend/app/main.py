@@ -1,15 +1,40 @@
 """
 SLLR FastAPI application.
 """
+import mimetypes
 import os
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
+from starlette.datastructures import Headers
+from starlette.responses import Response
+from starlette.staticfiles import NotModifiedResponse, StaticFiles
+from starlette.types import Scope
 
 from backend.app.routers import lessons, references, kpis, reports, export as export_router
+
+# Nixpacks/Nix images often have no /etc/mime.types. Without these, FileResponse
+# falls back to application/octet-stream and the browser refuses <script type="module">.
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
+mimetypes.add_type("application/json", ".json")
+mimetypes.add_type("image/svg+xml", ".svg")
+mimetypes.add_type("font/woff2", ".woff2")
+mimetypes.add_type("application/json", ".map")
+
+_ASSET_SUFFIXES = (".js", ".css", ".map", ".svg", ".woff2", ".json")
+
+_MIME_BY_SUFFIX = {
+    ".js": "application/javascript",
+    ".css": "text/css",
+    ".json": "application/json",
+    ".svg": "image/svg+xml",
+    ".woff2": "font/woff2",
+    ".map": "application/json",
+}
 
 
 def _cors_origins() -> list[str]:
@@ -35,18 +60,13 @@ def _resolve_static_dir() -> Optional[Path]:
     candidates = []
     if raw:
         candidates.append(Path(raw))
-    # Resolve from repo root using __file__
     repo_root = Path(__file__).resolve().parents[2]
     candidates.append(repo_root / "frontend" / "dist")
-    # Fallback to cwd relative
     candidates.append(Path("frontend/dist"))
     for path in candidates:
         if path.is_dir() and (path / "index.html").is_file():
-            return path
+            return path.resolve()
     return None
-
-
-STATIC_DIR = _resolve_static_dir()
 
 
 def _base_path() -> str:
@@ -54,57 +74,19 @@ def _base_path() -> str:
     return os.environ.get("SLLR_BASE_PATH", "/sllr").rstrip("/")
 
 
-BASE_PATH = _base_path()
-
-# Create single app that serves at both / and BASE_PATH
-app = FastAPI(
-    title="SLLR API",
-    description="Structured Lessons Learned Registry API",
-    version="2.0.0",
-)
-
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_cors_origins(),
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Routers at both / and BASE_PATH
-for prefix in ["/api", f"{BASE_PATH}/api"]:
-    app.include_router(references.router, prefix=prefix, tags=["references"])
-    app.include_router(lessons.router, prefix=prefix, tags=["lessons"])
-    app.include_router(kpis.router, prefix=prefix, tags=["kpis"])
-    app.include_router(reports.router, prefix=prefix, tags=["reports"])
-    app.include_router(export_router.router, prefix=prefix, tags=["export"])
+def _media_type_for(path: Path) -> Optional[str]:
+    return _MIME_BY_SUFFIX.get(path.suffix.lower())
 
 
-@app.get("/api/health")
-async def health_root():
-    """Health check endpoint at /api/health."""
-    return {"ok": True}
+def _looks_like_asset(path: str) -> bool:
+    return path.lower().endswith(_ASSET_SUFFIXES)
 
 
-@app.get(f"{BASE_PATH}/api/health")
-async def health_base():
-    """Health check endpoint at /sllr/api/health."""
-    return {"ok": True}
-
-
-# Redirect /sllr to /sllr/ (must be before catchall)
-@app.get(BASE_PATH, include_in_schema=False)
-async def redirect_base_to_slash():
-    """Redirect /sllr to /sllr/ like pvDesign."""
-    return RedirectResponse(url=f"{BASE_PATH}/", status_code=307)
-
-
-def _safe_static(full_path: str) -> Optional[Path]:
-    """Safely resolve static file path."""
-    if STATIC_DIR is None or not STATIC_DIR.is_dir():
+def _safe_static(static_dir: Path, full_path: str) -> Optional[Path]:
+    """Safely resolve a file under static_dir."""
+    if not static_dir.is_dir():
         return None
-    root = STATIC_DIR.resolve()
+    root = static_dir.resolve()
     candidate = (root / full_path).resolve()
     try:
         candidate.relative_to(root)
@@ -115,49 +97,150 @@ def _safe_static(full_path: str) -> Optional[Path]:
     return None
 
 
-# Static file serving (production) - SPA fallback for all non-API routes
-# Serve SPA at both / and BASE_PATH/
-if STATIC_DIR is not None and STATIC_DIR.is_dir():
+def _asset_list(static_dir: Optional[Path]) -> list[str]:
+    if static_dir is None:
+        return []
+    assets_dir = static_dir / "assets"
+    if not assets_dir.is_dir():
+        return []
+    return sorted(p.name for p in assets_dir.iterdir() if p.is_file())
 
-    @app.get("/")
-    def spa_root():
-        return FileResponse(STATIC_DIR / "index.html")
 
-    @app.get(f"{BASE_PATH}/")
-    def spa_base_root():
-        return FileResponse(STATIC_DIR / "index.html")
+class AssetStaticFiles(StaticFiles):
+    """StaticFiles that always sends JS/CSS with browser-accepted MIME types."""
 
-    # Register /sllr/{full_path:path} BEFORE /{full_path:path} so it matches first
-    @app.get(f"{BASE_PATH}/{{full_path:path}}")
-    def spa_base_path(full_path: str):
-        # Don't catch API routes
-        if full_path == "api" or full_path.startswith("api/"):
-            raise HTTPException(status_code=404)
-        # Try to serve static file
-        found = _safe_static(full_path)
-        if found is not None:
-            return FileResponse(found)
-        # Fallback to SPA
-        return FileResponse(STATIC_DIR / "index.html")
+    def file_response(
+        self,
+        full_path,
+        stat_result,
+        scope: Scope,
+        status_code: int = 200,
+    ) -> Response:
+        media_type = _media_type_for(Path(full_path))
+        request_headers = Headers(scope=scope)
+        response = FileResponse(
+            full_path,
+            status_code=status_code,
+            stat_result=stat_result,
+            media_type=media_type,
+        )
+        if self.is_not_modified(response.headers, request_headers):
+            return NotModifiedResponse(response.headers)
+        return response
 
-    @app.get("/{full_path:path}")
-    def spa_path(full_path: str):
-        # Don't catch API routes
-        if full_path == "api" or full_path.startswith("api/"):
-            raise HTTPException(status_code=404)
-        # Try to serve static file
-        found = _safe_static(full_path)
-        if found is not None:
-            return FileResponse(found)
-        # Fallback to SPA
-        return FileResponse(STATIC_DIR / "index.html")
-else:
-    # When STATIC_DIR is not available, still provide basic routes
 
-    @app.get("/")
-    def spa_root_missing():
-        raise HTTPException(status_code=404, detail="Static files not configured")
+def _static_info_payload(static_dir: Optional[Path]) -> dict:
+    exists = static_dir is not None and static_dir.is_dir()
+    return {
+        "static_dir": str(static_dir) if static_dir is not None else None,
+        "exists": exists,
+        "assets": _asset_list(static_dir),
+    }
 
-    @app.get(f"{BASE_PATH}/")
-    def spa_base_root_missing():
-        raise HTTPException(status_code=404, detail="Static files not configured")
+
+def create_app() -> FastAPI:
+    """Build the app so static mounts are registered before any SPA catch-all."""
+    static_dir = _resolve_static_dir()
+    base_path = _base_path()
+
+    app = FastAPI(
+        title="SLLR API",
+        description="Structured Lessons Learned Registry API",
+        version="2.0.0",
+    )
+    app.state.static_dir = static_dir
+    app.state.base_path = base_path
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins(),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    for prefix in ["/api", f"{base_path}/api"] if base_path else ["/api"]:
+        app.include_router(references.router, prefix=prefix, tags=["references"])
+        app.include_router(lessons.router, prefix=prefix, tags=["lessons"])
+        app.include_router(kpis.router, prefix=prefix, tags=["kpis"])
+        app.include_router(reports.router, prefix=prefix, tags=["reports"])
+        app.include_router(export_router.router, prefix=prefix, tags=["export"])
+
+    @app.get("/api/health")
+    async def health_root():
+        return {"ok": True}
+
+    if base_path:
+        @app.get(f"{base_path}/api/health")
+        async def health_base():
+            return {"ok": True}
+
+    @app.get("/api/static-info")
+    async def static_info_root(request: Request):
+        return _static_info_payload(request.app.state.static_dir)
+
+    if base_path:
+        @app.get(f"{base_path}/api/static-info")
+        async def static_info_base(request: Request):
+            return _static_info_payload(request.app.state.static_dir)
+
+        @app.get(base_path, include_in_schema=False)
+        async def redirect_base_to_slash():
+            return RedirectResponse(url=f"{base_path}/", status_code=307)
+
+    if static_dir is not None and static_dir.is_dir():
+        assets_dir = static_dir / "assets"
+        if assets_dir.is_dir():
+            prefixes = ["/assets"]
+            if base_path:
+                prefixes.append(f"{base_path}/assets")
+            for i, prefix in enumerate(dict.fromkeys(prefixes)):
+                app.mount(
+                    prefix,
+                    AssetStaticFiles(directory=str(assets_dir)),
+                    name=f"assets-{i}",
+                )
+
+        @app.get("/")
+        def spa_root():
+            return FileResponse(static_dir / "index.html", media_type="text/html")
+
+        if base_path:
+            @app.get(f"{base_path}/")
+            def spa_base_root():
+                return FileResponse(static_dir / "index.html", media_type="text/html")
+
+            @app.get(f"{base_path}/{{full_path:path}}")
+            def spa_base_path(full_path: str):
+                return _spa_fallback(static_dir, full_path)
+
+        @app.get("/{full_path:path}")
+        def spa_path(full_path: str):
+            return _spa_fallback(static_dir, full_path)
+    else:
+        @app.get("/")
+        def spa_root_missing():
+            raise HTTPException(status_code=404, detail="Static files not configured")
+
+        if base_path:
+            @app.get(f"{base_path}/")
+            def spa_base_root_missing():
+                raise HTTPException(status_code=404, detail="Static files not configured")
+
+    return app
+
+
+def _spa_fallback(static_dir: Path, full_path: str):
+    """SPA fallback: never serve index.html for hashed static asset URLs."""
+    if full_path == "api" or full_path.startswith("api/"):
+        raise HTTPException(status_code=404)
+    if _looks_like_asset(full_path):
+        raise HTTPException(status_code=404)
+    found = _safe_static(static_dir, full_path)
+    if found is not None:
+        return FileResponse(found, media_type=_media_type_for(found))
+    return FileResponse(static_dir / "index.html", media_type="text/html")
+
+
+# Module-level app for uvicorn backend.app.main:app
+app = create_app()
