@@ -42,3 +42,8 @@ Thumbs.db
 *.tmp
 *.bak
 *.log
+
+# Live SQLite (created on boot)
+*.db
+*.db-wal
+*.db-shm

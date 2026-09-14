@@ -5,7 +5,7 @@ import re
 from collections import defaultdict
 from typing import Any
 
-from sllr.loaders import load_lessons_master
+from .loaders import load_lessons_master
 
 
 def normalize_text(text: str) -> str:

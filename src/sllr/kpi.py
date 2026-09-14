@@ -5,7 +5,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Any
 
-from sllr.loaders import load_lessons_master
+from .loaders import load_lessons_master
 
 
 def _parse_date(s: str | None) -> datetime | None:

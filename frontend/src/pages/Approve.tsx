@@ -48,7 +48,7 @@ export function Approve() {
             {draftLessons.map((lesson) => (
               <div key={lesson['Lesson ID']} className="flex items-center justify-between p-3 bg-raised rounded-md">
                 <div>
-                  <div className="font-mono text-sm text-blue mb-1">{lesson['Lesson ID']}</div>
+                  <div className="font-mono text-sm text-accent mb-1">{lesson['Lesson ID']}</div>
                   <div className="text-text">{lesson.Title}</div>
                   <div className="text-sm text-muted">Owner: {lesson.Owner}</div>
                 </div>
@@ -69,7 +69,7 @@ export function Approve() {
               <div key={lesson['Lesson ID']} className="flex items-center justify-between p-3 bg-raised rounded-md">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-1">
-                    <span className="font-mono text-sm text-blue">{lesson['Lesson ID']}</span>
+                    <span className="font-mono text-sm text-accent">{lesson['Lesson ID']}</span>
                     <StatusDot status={lesson.Status} />
                   </div>
                   <div className="text-text">{lesson.Title}</div>

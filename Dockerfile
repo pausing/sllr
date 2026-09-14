@@ -38,7 +38,9 @@ COPY docs/ ./docs/
 COPY --from=frontend-build /app/frontend/dist ./frontend/dist
 
 # Environment variables
-ENV SLLR_DATA_DIR=/data
+# Live SQLite defaults to data/ in the image. Set SLLR_DATA_DIR=/data only
+# after the volume can hold lessons.db (an empty directory is fine).
+ENV SLLR_DATA_DIR=data
 ENV STATIC_DIR=frontend/dist
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8000

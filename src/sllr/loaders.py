@@ -1,11 +1,12 @@
 """
-Load reference CSVs and lessons master into memory.
+Load reference CSVs and the live lessons store.
 """
 import csv
 from pathlib import Path
 from typing import Any
 
-from sllr.config import REFERENCE_FILES, REF_CODE_COLUMN, get_lessons_master_path
+from .config import REFERENCE_FILES, REF_CODE_COLUMN
+from .store import load_lessons, replace_lessons
 
 
 def load_reference(path: Path) -> list[str]:
@@ -32,24 +33,11 @@ def load_all_references() -> dict[str, list[str]]:
 
 
 def load_lessons_master() -> list[dict[str, Any]]:
-    """Load lessons_master.csv as list of dicts (same path as API storage)."""
-    path = get_lessons_master_path()
-    if not path.exists():
-        return []
-    with open(path, newline="", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        return list(reader)
+    """Load live lessons from SQLite (same path as the API)."""
+    return load_lessons()
 
 
 def save_lessons_master(rows: list[dict[str, Any]], fieldnames: list[str] | None = None) -> None:
-    """Write lessons back to lessons_master.csv."""
-    if not rows and not fieldnames:
-        return
-    if fieldnames is None:
-        fieldnames = list(rows[0].keys()) if rows else []
-    path = get_lessons_master_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
-        writer.writeheader()
-        writer.writerows(rows)
+    """Write lessons to the live SQLite store. fieldnames kept for call-site compat."""
+    del fieldnames
+    replace_lessons(rows)

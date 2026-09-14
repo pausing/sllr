@@ -10,7 +10,7 @@ export function Button({ variant = 'default', className = '', children, ...props
   
   const variantStyles = {
     default: 'bg-raised text-text border border-line hover:bg-[#222936]',
-    primary: 'bg-blue text-white hover:bg-blue-hover',
+    primary: 'bg-accent text-ink hover:opacity-90',
     ghost: 'text-muted hover:text-text hover:bg-raised',
     danger: 'bg-danger text-white hover:bg-danger-hover',
   }
@@ -50,7 +50,7 @@ interface TextInputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
 export function TextInput({ className = '', ...props }: TextInputProps) {
   return (
     <input
-      className={`px-3 py-2 bg-panel border border-line rounded-md text-text placeholder-muted focus:outline-none focus:border-blue ${className}`}
+      className={`px-3 py-2 bg-panel border border-line rounded-md text-text placeholder-muted focus:outline-none focus:border-accent ${className}`}
       {...props}
     />
   )
@@ -61,7 +61,7 @@ interface TextAreaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 export function TextArea({ className = '', ...props }: TextAreaProps) {
   return (
     <textarea
-      className={`px-3 py-2 bg-panel border border-line rounded-md text-text placeholder-muted focus:outline-none focus:border-blue ${className}`}
+      className={`px-3 py-2 bg-panel border border-line rounded-md text-text placeholder-muted focus:outline-none focus:border-accent ${className}`}
       rows={3}
       {...props}
     />
@@ -75,7 +75,7 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
 export function Select({ options, className = '', ...props }: SelectProps) {
   return (
     <select
-      className={`px-3 py-2 bg-panel border border-line rounded-md text-text focus:outline-none focus:border-blue ${className}`}
+      className={`px-3 py-2 bg-panel border border-line rounded-md text-text focus:outline-none focus:border-accent ${className}`}
       {...props}
     >
       {options.map((opt) => (
@@ -107,7 +107,7 @@ interface StatusDotProps {
 export function StatusDot({ status }: StatusDotProps) {
   const colors: Record<string, string> = {
     Draft: 'bg-muted',
-    Approved: 'bg-blue',
+    Approved: 'bg-accent',
     'Not Implemented': 'bg-amber',
     Implemented: 'bg-green-500',
   }

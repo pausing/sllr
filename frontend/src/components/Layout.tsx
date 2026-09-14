@@ -37,7 +37,7 @@ export function Layout() {
                     to={item.path}
                     className={`block px-3 py-2 rounded-md text-sm transition-colors ${
                       isActive
-                        ? 'bg-raised text-text font-medium'
+                        ? 'bg-accent-dim text-accent font-medium'
                         : 'text-muted hover:text-text hover:bg-raised'
                     }`}
                   >

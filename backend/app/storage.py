@@ -1,86 +1,64 @@
 """
-CSV storage with file locking for lessons data.
-Last-write-wins is the current behavior; lock prevents torn reads/writes.
+Live lesson store: SQLite (same file for list/create/update/patch and KPIs).
+
+CSV is import/export only. File-lock CSV I/O is gone from the live path.
 """
-import csv
-import fcntl
 from pathlib import Path
 from typing import Any, Optional
 
-from src.sllr.config import LESSON_SCHEMA, get_lessons_master_path
+from src.sllr.config import get_lessons_db_path, get_live_data_dir
+from src.sllr.store import (
+    export_lessons_csv,
+    find_lesson_by_id,
+    import_lessons_csv,
+    import_lessons_csv_path,
+    init_store,
+    insert_lesson,
+    lesson_id_exists,
+    lessons_to_csv_text,
+    load_lessons,
+    replace_lessons,
+    suggest_next_id,
+    update_lesson_row,
+)
 
 
 def get_data_dir() -> Path:
-    """Directory that holds lessons_master.csv (same resolution as sllr.config)."""
-    return get_lessons_master_path().parent
+    return get_live_data_dir()
 
 
 def get_lessons_path() -> Path:
-    """Get the lessons master CSV path (shared with load_lessons_master)."""
-    return get_lessons_master_path()
+    """Live SQLite path (shared with KPI / load_lessons_master)."""
+    return get_lessons_db_path()
 
 
 def load_lessons_with_lock() -> list[dict[str, Any]]:
-    """Load lessons_master.csv with a shared lock."""
-    path = get_lessons_path()
-    if not path.exists():
-        return []
-    
-    with open(path, "r", newline="", encoding="utf-8") as f:
-        fcntl.flock(f.fileno(), fcntl.LOCK_SH)
-        try:
-            reader = csv.DictReader(f)
-            return list(reader)
-        finally:
-            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+    return load_lessons()
 
 
 def save_lessons_with_lock(
-    rows: list[dict[str, Any]], 
-    fieldnames: Optional[list[str]] = None
+    rows: list[dict[str, Any]],
+    fieldnames: Optional[list[str]] = None,
 ) -> None:
-    """Write lessons back to lessons_master.csv with an exclusive lock."""
-    path = get_lessons_path()
-    if not rows and not fieldnames:
-        return
-    
-    if fieldnames is None:
-        fieldnames = list(LESSON_SCHEMA.keys())
-    
-    path.parent.mkdir(parents=True, exist_ok=True)
-    
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-        try:
-            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
-            writer.writeheader()
-            writer.writerows(rows)
-        finally:
-            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+    del fieldnames
+    replace_lessons(rows)
 
 
-def find_lesson_by_id(lesson_id: str) -> Optional[dict[str, Any]]:
-    """Find a lesson by ID."""
-    lessons = load_lessons_with_lock()
-    for lesson in lessons:
-        if lesson.get("Lesson ID") == lesson_id:
-            return lesson
-    return None
-
-
-def lesson_id_exists(lesson_id: str) -> bool:
-    """Check if a lesson ID already exists."""
-    return find_lesson_by_id(lesson_id) is not None
-
-
-def suggest_next_id() -> str:
-    """Suggest the next available lesson ID (LL-001, LL-002, ...)."""
-    lessons = load_lessons_with_lock()
-    existing_ids = {r.get("Lesson ID", "") for r in lessons if r.get("Lesson ID")}
-    
-    for i in range(1, 10000):
-        candidate = f"LL-{i:03d}"
-        if candidate not in existing_ids:
-            return candidate
-    
-    return "LL-001"
+__all__ = [
+    "export_lessons_csv",
+    "find_lesson_by_id",
+    "get_data_dir",
+    "get_lessons_path",
+    "import_lessons_csv",
+    "import_lessons_csv_path",
+    "init_store",
+    "insert_lesson",
+    "lesson_id_exists",
+    "lessons_to_csv_text",
+    "load_lessons",
+    "load_lessons_with_lock",
+    "replace_lessons",
+    "save_lessons_with_lock",
+    "suggest_next_id",
+    "update_lesson_row",
+]

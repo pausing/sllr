@@ -60,7 +60,7 @@ export function Implementation() {
               <tbody>
                 {lessons.map((lesson) => (
                   <tr key={lesson['Lesson ID']} className="border-b border-line hover:bg-raised">
-                    <td className="py-3 px-4 font-mono text-blue">{lesson['Lesson ID']}</td>
+                    <td className="py-3 px-4 font-mono text-accent">{lesson['Lesson ID']}</td>
                     <td className="py-3 px-4 text-text">{lesson.Title}</td>
                     <td className="py-3 px-4 text-muted">{lesson['Recommendation Due Date'] || '—'}</td>
                     <td className="py-3 px-4 text-muted">{lesson.Owner}</td>

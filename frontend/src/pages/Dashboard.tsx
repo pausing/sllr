@@ -84,7 +84,7 @@ function BarChart({ title, data }: { title: string; data: Record<string, number>
             </div>
             <div className="w-full h-2 bg-raised rounded">
               <div
-                className="h-full bg-blue rounded"
+                className="h-full bg-accent rounded"
                 style={{ width: `${(value / max) * 100}%` }}
               />
             </div>

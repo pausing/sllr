@@ -6,7 +6,7 @@ import csv
 from pathlib import Path
 from typing import Any
 
-from sllr.config import DATA_DIR, PROJECT_ROOT, REFERENCE_FILES
+from .config import DATA_DIR, PROJECT_ROOT, REFERENCE_FILES
 
 try:
     from reportlab.lib import colors
