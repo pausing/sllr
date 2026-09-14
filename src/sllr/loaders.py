@@ -5,7 +5,7 @@ import csv
 from pathlib import Path
 from typing import Any
 
-from sllr.config import REFERENCE_FILES, LESSONS_MASTER, REF_CODE_COLUMN
+from sllr.config import REFERENCE_FILES, REF_CODE_COLUMN, get_lessons_master_path
 
 
 def load_reference(path: Path) -> list[str]:
@@ -32,10 +32,11 @@ def load_all_references() -> dict[str, list[str]]:
 
 
 def load_lessons_master() -> list[dict[str, Any]]:
-    """Load lessons_master.csv as list of dicts."""
-    if not LESSONS_MASTER.exists():
+    """Load lessons_master.csv as list of dicts (same path as API storage)."""
+    path = get_lessons_master_path()
+    if not path.exists():
         return []
-    with open(LESSONS_MASTER, newline="", encoding="utf-8") as f:
+    with open(path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         return list(reader)
 
@@ -46,8 +47,9 @@ def save_lessons_master(rows: list[dict[str, Any]], fieldnames: list[str] | None
         return
     if fieldnames is None:
         fieldnames = list(rows[0].keys()) if rows else []
-    LESSONS_MASTER.parent.mkdir(parents=True, exist_ok=True)
-    with open(LESSONS_MASTER, "w", newline="", encoding="utf-8") as f:
+    path = get_lessons_master_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)

@@ -29,6 +29,12 @@ export interface References {
   implementation_statuses: string[]
 }
 
+export interface PortalMe {
+  user_id: string | null
+  email: string | null
+  admin: boolean | null
+}
+
 export interface KPIs {
   total_lessons: number
   repeated_issues_count: number
@@ -44,6 +50,12 @@ export interface KPIs {
 }
 
 export const api = {
+  async getMe(): Promise<PortalMe> {
+    const res = await fetch(`${API_BASE}/me`)
+    if (!res.ok) throw new Error('Failed to fetch current user')
+    return res.json()
+  },
+
   async getReferences(): Promise<References> {
     const res = await fetch(`${API_BASE}/references`)
     if (!res.ok) throw new Error('Failed to fetch references')

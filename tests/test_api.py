@@ -55,6 +55,57 @@ def test_list_lessons():
     assert isinstance(lessons, list)
 
 
+def test_empty_lessons_and_kpis_same_file(tmp_path, monkeypatch):
+    """KPI and list_lessons must both read the same (empty) lessons file."""
+    from src.sllr.config import LESSON_SCHEMA, get_lessons_master_path
+    from backend.app.storage import get_lessons_path, load_lessons_with_lock
+    from src.sllr.kpi import compute_kpis
+    from src.sllr.loaders import load_lessons_master
+
+    data_dir = tmp_path / "empty_lessons"
+    data_dir.mkdir()
+    header = ",".join(LESSON_SCHEMA.keys()) + "\n"
+    (data_dir / "lessons_master.csv").write_text(header, encoding="utf-8")
+    monkeypatch.setenv("SLLR_DATA_DIR", str(data_dir))
+
+    assert get_lessons_path() == get_lessons_master_path()
+    assert get_lessons_path() == data_dir / "lessons_master.csv"
+    assert load_lessons_with_lock() == []
+    assert load_lessons_master() == []
+    assert compute_kpis([])["total_lessons"] == 0
+    assert compute_kpis()["total_lessons"] == 0
+
+    lessons_resp = client.get("/sllr/api/lessons")
+    kpis_resp = client.get("/sllr/api/kpis")
+    assert lessons_resp.status_code == 200
+    assert lessons_resp.json() == []
+    assert kpis_resp.status_code == 200
+    assert kpis_resp.json()["total_lessons"] == 0
+
+
+def test_me_without_headers():
+    response = client.get("/sllr/api/me")
+    assert response.status_code == 200
+    assert response.json() == {"user_id": None, "email": None, "admin": None}
+
+
+def test_me_with_portal_headers():
+    response = client.get(
+        "/sllr/api/me",
+        headers={
+            "X-Powerlearn-User-Id": "u-42",
+            "X-Powerlearn-Email": "pablo@powerlearn.us",
+            "X-Powerlearn-Admin": "true",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "user_id": "u-42",
+        "email": "pablo@powerlearn.us",
+        "admin": True,
+    }
+
+
 def test_get_next_id():
     """Test next ID suggestion with /sllr prefix."""
     response = client.get("/sllr/api/lessons/next-id")
@@ -92,6 +143,35 @@ def test_create_lesson():
     assert created["Lesson ID"] == next_id
     assert created["Status"] == "Draft"
     assert created["Implementation Status"] == "Not Implemented"
+
+
+def test_create_lesson_owner_defaults_to_portal_email():
+    """When the client omits Owner, stamp it from X-Powerlearn-Email."""
+    next_id = client.get("/sllr/api/lessons/next-id").json()["suggested_id"]
+    lesson_data = {
+        "Lesson ID": next_id,
+        "Title": "Portal Owner Lesson",
+        "Category": "Engineering",
+        "Technical Block": "PV",
+        "Sub-category": "Modules",
+        "Project Phase": "Construction",
+        "Root Cause": "Test root cause",
+        "What Happened": "Test what happened",
+        "Impact": "Test impact",
+        "Lesson Learned": "Test lesson learned",
+        "Recommendation": "Test recommendation",
+    }
+    response = client.post(
+        "/sllr/api/lessons",
+        json=lesson_data,
+        headers={
+            "X-Powerlearn-User-Id": "u-1",
+            "X-Powerlearn-Email": "owner@powerlearn.us",
+            "X-Powerlearn-Admin": "false",
+        },
+    )
+    assert response.status_code == 201
+    assert response.json()["Owner"] == "owner@powerlearn.us"
 
 
 def test_create_lesson_duplicate_id():

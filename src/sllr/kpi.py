@@ -36,7 +36,8 @@ def compute_kpis(rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     - Repeated Issues (duplicate or near-duplicate indicators)
     - Capture-to-Approval Time (when dates available)
     """
-    rows = rows or load_lessons_master()
+    if rows is None:
+        rows = load_lessons_master()
     if not rows:
         return {
             "total_lessons": 0,
