@@ -231,14 +231,22 @@ def create_app() -> FastAPI:
 
 
 def _spa_fallback(static_dir: Path, full_path: str):
-    """SPA fallback: never serve index.html for hashed static asset URLs."""
+    """Serve real dist files first.
+
+    FastAPI/Starlette path operations beat mounts, so
+    ``/sllr/{full_path:path}`` matches ``/sllr/assets/index-HASH.js`` before
+    ``app.mount("/sllr/assets", StaticFiles)``. The catch-all must look up the
+    file (like pvDesign) instead of 404-ing on ``.js``/``.css`` before
+    ``_safe_static``. Mounts are belt-and-suspenders only.
+    """
     if full_path == "api" or full_path.startswith("api/"):
-        raise HTTPException(status_code=404)
-    if _looks_like_asset(full_path):
         raise HTTPException(status_code=404)
     found = _safe_static(static_dir, full_path)
     if found is not None:
-        return FileResponse(found, media_type=_media_type_for(found))
+        media_type = _media_type_for(found)
+        return FileResponse(found, media_type=media_type)
+    if _looks_like_asset(full_path):
+        raise HTTPException(status_code=404)
     return FileResponse(static_dir / "index.html", media_type="text/html")
 
 
