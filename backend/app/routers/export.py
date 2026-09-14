@@ -1,12 +1,11 @@
 """
-Export API router - PDF and HTML exports.
+Export API router - PDF, HTML, and CSV import/export.
+CSV is not the live store; live lessons live in SQLite.
 """
-from io import BytesIO
+from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi.responses import Response
 
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import Response, StreamingResponse
-
-from backend.app.storage import load_lessons_with_lock
+from backend.app.storage import import_lessons_csv, lessons_to_csv_text, load_lessons_with_lock
 from src.sllr.export_pdf import build_pdf, REPORTLAB_AVAILABLE
 from src.sllr.export_html import build_html_string
 
@@ -70,3 +69,26 @@ async def export_html():
         media_type="text/html",
         headers={"Content-Disposition": "attachment; filename=lessons_learned.html"}
     )
+
+
+@router.get("/export/csv")
+async def export_csv():
+    """Download live lessons as lessons_master.csv (export only)."""
+    csv_content = lessons_to_csv_text()
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=lessons_master.csv"},
+    )
+
+
+@router.post("/import/csv")
+async def import_csv(file: UploadFile = File(...)):
+    """Replace the live SQLite store from an uploaded lessons_master.csv."""
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise HTTPException(status_code=400, detail="CSV must be UTF-8") from exc
+    count = import_lessons_csv(text)
+    return {"imported": count}

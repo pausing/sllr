@@ -15,6 +15,7 @@ from starlette.staticfiles import NotModifiedResponse, StaticFiles
 from starlette.types import Scope
 
 from backend.app.routers import lessons, references, kpis, reports, export as export_router, me
+from backend.app.storage import init_store
 
 # Nixpacks/Nix images often have no /etc/mime.types. Without these, FileResponse
 # falls back to application/octet-stream and the browser refuses <script type="module">.
@@ -150,6 +151,7 @@ def create_app() -> FastAPI:
     )
     app.state.static_dir = static_dir
     app.state.base_path = base_path
+    init_store()
 
     app.add_middleware(
         CORSMiddleware,

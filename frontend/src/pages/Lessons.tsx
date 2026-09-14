@@ -91,11 +91,11 @@ export function Lessons() {
       ) : (
         <div className="space-y-4">
           {lessons.map((lesson) => (
-            <Card key={lesson['Lesson ID']} className="hover:border-blue transition-colors">
+            <Card key={lesson['Lesson ID']} className="hover:border-accent transition-colors">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="text-blue font-mono text-sm">{lesson['Lesson ID']}</span>
+                    <span className="text-accent font-mono text-sm">{lesson['Lesson ID']}</span>
                     <StatusDot status={lesson.Status} />
                   </div>
                   <h3 className="text-lg font-medium text-text mb-2">{lesson.Title}</h3>

@@ -6,21 +6,39 @@ from pathlib import Path
 
 # Project root (parent of src)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-# Reference CSVs always live in the repo data/ directory.
+# Reference CSVs always live in the repo/image data/ directory.
 DATA_DIR = PROJECT_ROOT / "data"
 
 
-def get_lessons_master_path() -> Path:
-    """Resolve lessons_master.csv at call time so KPI and API cannot drift.
+def get_live_data_dir() -> Path:
+    """Directory for the live SQLite file (and optional CSV import/export).
 
-    ``SLLR_DATA_DIR`` (default ``data``) selects the directory. The relative
-    default ``data`` always maps to ``PROJECT_ROOT / data``, not cwd.
+    If ``SLLR_DATA_DIR`` is set, use that directory (Dokploy volume, e.g. ``/data``).
+    Otherwise use ``PROJECT_ROOT / data`` (``data/`` in the image). The bare
+    relative value ``data`` always maps to ``PROJECT_ROOT / data``, not cwd.
+    An empty directory is fine — schema is created on boot.
     """
     raw = (os.getenv("SLLR_DATA_DIR") or "data").strip() or "data"
     data_dir = Path(raw)
     if data_dir == Path("data"):
-        return DATA_DIR / "lessons_master.csv"
-    return data_dir / "lessons_master.csv"
+        return DATA_DIR
+    return data_dir
+
+
+def get_lessons_db_path() -> Path:
+    """Live lessons SQLite file (``lessons.db``)."""
+    return get_live_data_dir() / "lessons.db"
+
+
+def get_lessons_csv_path() -> Path:
+    """CSV used only for one-time migrate, import, and export."""
+    return get_live_data_dir() / "lessons_master.csv"
+
+
+def get_lessons_master_path() -> Path:
+    """CSV path (import/export / one-time migrate). Not the live store."""
+    return get_lessons_csv_path()
+
 
 # Reference CSV files (controlled vocabularies)
 REFERENCE_FILES = {
@@ -38,7 +56,7 @@ REF_CODE_COLUMN = "code"
 
 # Lesson columns and their reference (if any).
 # When creating a new lesson, only Status "Draft" is allowed.
-LESSON_SCHEMA = {
+LESSSON_SCHEMA = {
     "Lesson ID": {"required": True, "reference": None},
     "Title": {"required": True, "reference": None},
     "Category": {"required": True, "reference": "categories"},
@@ -58,3 +76,5 @@ LESSON_SCHEMA = {
     "Created Date": {"required": False, "reference": None},
     "Modified Date": {"required": False, "reference": None},
 }
+
+LESSON_COLUMNS = list(LESSON_SCHEMA.keys())

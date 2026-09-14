@@ -56,27 +56,29 @@ def test_list_lessons():
 
 
 def test_empty_lessons_and_kpis_same_file(tmp_path, monkeypatch):
-    """KPI and list_lessons must both read the same (empty) lessons file."""
-    from src.sllr.config import LESSON_SCHEMA, get_lessons_master_path
+    """KPI and list_lessons must both read the same empty SQLite store."""
+    from src.sllr.config import get_lessons_db_path
     from backend.app.storage import get_lessons_path, load_lessons_with_lock
     from src.sllr.kpi import compute_kpis
     from src.sllr.loaders import load_lessons_master
+    from src.sllr.store import reset_init_cache
+    from backend.app.main import create_app
 
     data_dir = tmp_path / "empty_lessons"
     data_dir.mkdir()
-    header = ",".join(LESSON_SCHEMA.keys()) + "\n"
-    (data_dir / "lessons_master.csv").write_text(header, encoding="utf-8")
     monkeypatch.setenv("SLLR_DATA_DIR", str(data_dir))
+    reset_init_cache()
 
-    assert get_lessons_path() == get_lessons_master_path()
-    assert get_lessons_path() == data_dir / "lessons_master.csv"
+    assert get_lessons_path() == get_lessons_db_path()
+    assert get_lessons_path() == data_dir / "lessons.db"
     assert load_lessons_with_lock() == []
     assert load_lessons_master() == []
     assert compute_kpis([])["total_lessons"] == 0
     assert compute_kpis()["total_lessons"] == 0
 
-    lessons_resp = client.get("/sllr/api/lessons")
-    kpis_resp = client.get("/sllr/api/kpis")
+    isolated = TestClient(create_app())
+    lessons_resp = isolated.get("/sllr/api/lessons")
+    kpis_resp = isolated.get("/sllr/api/kpis")
     assert lessons_resp.status_code == 200
     assert lessons_resp.json() == []
     assert kpis_resp.status_code == 200

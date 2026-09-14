@@ -8,14 +8,14 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from backend.app.storage import (
-    load_lessons_with_lock,
-    save_lessons_with_lock,
     find_lesson_by_id,
+    insert_lesson,
     lesson_id_exists,
+    load_lessons_with_lock,
     suggest_next_id,
+    update_lesson_row,
 )
 from backend.app.identity import resolve_owner
-from src.sllr.config import LESSON_SCHEMA
 from src.sllr.loaders import load_all_references
 from src.sllr.validation import validate_lesson
 
@@ -175,11 +175,7 @@ async def create_lesson(lesson: LessonCreate, request: Request):
     if errors:
         raise HTTPException(status_code=422, detail={"errors": errors})
     
-    # Save
-    lessons = load_lessons_with_lock()
-    lessons.append(row)
-    save_lessons_with_lock(lessons, fieldnames=list(LESSON_SCHEMA.keys()))
-    
+    insert_lesson(row)
     return row
 
 
@@ -235,11 +231,7 @@ async def update_lesson(lesson_id: str, lesson: LessonUpdate, request: Request):
     if errors:
         raise HTTPException(status_code=422, detail={"errors": errors})
     
-    # Save
-    lessons = load_lessons_with_lock()
-    lessons = [updated if l.get("Lesson ID") == lesson_id else l for l in lessons]
-    save_lessons_with_lock(lessons, fieldnames=list(LESSON_SCHEMA.keys()))
-    
+    update_lesson_row(lesson_id, updated)
     return updated
 
 
@@ -295,9 +287,5 @@ async def patch_lesson(lesson_id: str, patch: LessonPatch, request: Request):
     if errors:
         raise HTTPException(status_code=422, detail={"errors": errors})
     
-    # Save
-    lessons = load_lessons_with_lock()
-    lessons = [patched if l.get("Lesson ID") == lesson_id else l for l in lessons]
-    save_lessons_with_lock(lessons, fieldnames=list(LESSON_SCHEMA.keys()))
-    
+    update_lesson_row(lesson_id, patched)
     return patched
