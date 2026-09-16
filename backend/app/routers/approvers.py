@@ -9,8 +9,10 @@ from backend.app.storage import (
     add_approver_mapping,
     delete_approver_mapping,
     get_approver_blocks,
+    list_approvers_by_block,
     list_approvers_grouped,
     set_approver_blocks,
+    set_approvers_for_block,
 )
 from src.sllr.loaders import load_all_references
 
@@ -26,6 +28,12 @@ class ApproverAdd(BaseModel):
     email: str
     technical_block: Optional[str] = None
     technical_blocks: Optional[list[str]] = None
+
+
+class ApproverBlockSet(BaseModel):
+    technical_block: str
+    email: Optional[str] = None
+    emails: Optional[list[str]] = None
 
 
 def _valid_blocks() -> set[str]:
@@ -47,8 +55,8 @@ def _require_known_blocks(blocks: list[str]) -> list[str]:
 @router.get("/approvers")
 async def list_approvers(request: Request):
     """List all email → technical block mappings (admin only)."""
-    require_portal_admin(request)
-    return {"approvers": list_approvers_grouped()}
+    require_portal_admin(request, "Portal admin required to manage approvers.")
+    return {"approvers": list_approvers_grouped(), "blocks": list_approvers_by_block()}
 
 
 @router.get("/approvers/me")
@@ -63,10 +71,57 @@ async def get_my_approver_rules(request: Request):
     }
 
 
+@router.get("/approvers/block")
+async def list_approver_blocks(request: Request):
+    """List approvers grouped by technical block (admin only)."""
+    require_portal_admin(request, "Portal admin required to manage approvers.")
+    return {"blocks": list_approvers_by_block()}
+
+
+@router.put("/approvers/block")
+async def replace_block_approvers(payload: ApproverBlockSet, request: Request):
+    """Replace all approvers for one technical block (admin only).
+
+    Pass a single ``email`` (or ``emails``) to set the mapping(s). Empty / null
+    email clears the block.
+    """
+    require_portal_admin(request, "Portal admin required to manage approvers.")
+    block = (payload.technical_block or "").strip()
+    if not block:
+        raise HTTPException(status_code=422, detail="technical_block is required")
+    _require_known_blocks([block])
+    emails: list[str] = []
+    if payload.emails:
+        emails.extend(payload.emails)
+    elif payload.email:
+        emails.append(payload.email)
+    stored = set_approvers_for_block(block, emails)
+    return {"technical_block": block, "emails": stored}
+
+
+@router.post("/approvers/block", status_code=201)
+async def add_block_approver(payload: ApproverBlockSet, request: Request):
+    """Add a secondary approver for a technical block without replacing others."""
+    require_portal_admin(request, "Portal admin required to manage approvers.")
+    block = (payload.technical_block or "").strip()
+    email = normalize_email(payload.email)
+    if not block:
+        raise HTTPException(status_code=422, detail="technical_block is required")
+    if not email:
+        raise HTTPException(status_code=422, detail="email is required")
+    _require_known_blocks([block])
+    add_approver_mapping(email, block)
+    current = next(
+        (row for row in list_approvers_by_block() if row["technical_block"] == block),
+        {"technical_block": block, "emails": []},
+    )
+    return current
+
+
 @router.put("/approvers")
 async def replace_approver_blocks(payload: ApproverSet, request: Request):
     """Replace the technical blocks assigned to an email (admin only)."""
-    require_portal_admin(request)
+    require_portal_admin(request, "Portal admin required to manage approvers.")
     email = normalize_email(payload.email)
     if not email:
         raise HTTPException(status_code=422, detail="email is required")
@@ -79,7 +134,7 @@ async def replace_approver_blocks(payload: ApproverSet, request: Request):
 @router.post("/approvers", status_code=201)
 async def add_approver(payload: ApproverAdd, request: Request):
     """Add one or more technical-block mappings for an email (admin only)."""
-    require_portal_admin(request)
+    require_portal_admin(request, "Portal admin required to manage approvers.")
     email = normalize_email(payload.email)
     if not email:
         raise HTTPException(status_code=422, detail="email is required")
@@ -100,7 +155,7 @@ async def add_approver(payload: ApproverAdd, request: Request):
 @router.delete("/approvers/{email}")
 async def delete_approver(email: str, request: Request):
     """Remove all mappings for an email (admin only)."""
-    require_portal_admin(request)
+    require_portal_admin(request, "Portal admin required to manage approvers.")
     normalized = normalize_email(email)
     deleted = delete_approver_mapping(normalized)
     return {"email": normalized, "deleted": deleted}
@@ -109,7 +164,7 @@ async def delete_approver(email: str, request: Request):
 @router.delete("/approvers/{email}/{technical_block}")
 async def delete_approver_block(email: str, technical_block: str, request: Request):
     """Remove one email + technical block mapping (admin only)."""
-    require_portal_admin(request)
+    require_portal_admin(request, "Portal admin required to manage approvers.")
     normalized = normalize_email(email)
     deleted = delete_approver_mapping(normalized, technical_block)
     if deleted == 0:

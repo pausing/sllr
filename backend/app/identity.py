@@ -43,12 +43,12 @@ def is_portal_admin(request: Request) -> bool:
     return portal_identity(request)["admin"] is True
 
 
-def require_portal_admin(request: Request) -> dict[str, Any]:
+def require_portal_admin(request: Request, detail: str | None = None) -> dict[str, Any]:
     ident = portal_identity(request)
     if ident["admin"] is not True:
         raise HTTPException(
             status_code=403,
-            detail="Portal admin required to manage approvers.",
+            detail=detail or "Portal admin required.",
         )
     return ident
 

@@ -14,7 +14,7 @@ from starlette.responses import Response
 from starlette.staticfiles import NotModifiedResponse, StaticFiles
 from starlette.types import Scope
 
-from backend.app.routers import lessons, references, kpis, reports, export as export_router, me, approvers
+from backend.app.routers import lessons, references, kpis, reports, export as export_router, me, approvers, settings
 from backend.app.storage import init_store
 
 # Nixpacks/Nix images often have no /etc/mime.types. Without these, FileResponse
@@ -169,6 +169,7 @@ def create_app() -> FastAPI:
         app.include_router(export_router.router, prefix=prefix, tags=["export"])
         app.include_router(me.router, prefix=prefix, tags=["me"])
         app.include_router(approvers.router, prefix=prefix, tags=["approvers"])
+        app.include_router(settings.router, prefix=prefix, tags=["settings"])
 
     @app.get("/api/health")
     async def health_root():

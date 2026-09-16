@@ -59,7 +59,13 @@ def client(tmp_path, monkeypatch):
 def test_admin_can_assign_approver_blocks(client):
     listed = client.get("/sllr/api/approvers", headers=ADMIN)
     assert listed.status_code == 200
-    assert listed.json() == {"approvers": []}
+    assert listed.json()["approvers"] == []
+    assert {row["technical_block"] for row in listed.json()["blocks"]} == {
+        "Civil",
+        "HV & Grid",
+        "PV",
+        "BESS",
+    }
 
     created = client.put(
         "/sllr/api/approvers",
@@ -223,3 +229,40 @@ def test_approve_ui_filter_logic():
     admin_visible = visible_lessons_for_approve(lessons, is_admin=True, allowed_blocks=[])
     assert [row["Lesson ID"] for row in admin_visible] == ["1", "2", "3"]
     assert can_change_status(is_admin=True, allowed_blocks=[], lesson=lessons[2])
+
+
+def test_set_approver_by_block_replaces_mappings(client):
+    client.put(
+        "/sllr/api/approvers/block",
+        json={"technical_block": "Civil", "email": "first@powerlearn.us"},
+        headers=ADMIN,
+    )
+    client.post(
+        "/sllr/api/approvers/block",
+        json={"technical_block": "Civil", "email": "second@powerlearn.us"},
+        headers=ADMIN,
+    )
+    listed = client.get("/sllr/api/approvers/block", headers=ADMIN)
+    civil = next(row for row in listed.json()["blocks"] if row["technical_block"] == "Civil")
+    assert set(civil["emails"]) == {"first@powerlearn.us", "second@powerlearn.us"}
+
+    replaced = client.put(
+        "/api/approvers/block",
+        json={"technical_block": "Civil", "email": "civil.approver@powerlearn.us"},
+        headers=ADMIN,
+    )
+    assert replaced.status_code == 200, replaced.text
+    assert replaced.json()["emails"] == ["civil.approver@powerlearn.us"]
+
+    grouped = client.get("/sllr/api/approvers", headers=ADMIN).json()["approvers"]
+    assert grouped == [
+        {"email": "civil.approver@powerlearn.us", "technical_blocks": ["Civil"]}
+    ]
+
+    cleared = client.put(
+        "/sllr/api/approvers/block",
+        json={"technical_block": "Civil", "email": None},
+        headers=ADMIN,
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["emails"] == []
