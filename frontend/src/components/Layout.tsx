@@ -4,11 +4,12 @@ import { api, PortalMe } from '../lib/api'
 
 const PORTAL_URL = 'https://portal.powerlearn.us/'
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { path: string; label: string; adminOnly?: boolean }[] = [
   { path: '/', label: 'Dashboard' },
   { path: '/lessons', label: 'Browse Lessons' },
   { path: '/lessons/new', label: 'Add Lesson' },
   { path: '/approve', label: 'Approve' },
+  { path: '/approvers', label: 'Approvers', adminOnly: true },
   { path: '/implementation', label: 'Implementation' },
   { path: '/validation', label: 'Validation' },
   { path: '/duplicates', label: 'Duplicates' },
@@ -90,7 +91,7 @@ export function Layout() {
         <aside className="w-64 shrink-0 border-r border-line bg-panel">
           <nav className="p-4">
             <ul className="space-y-1">
-              {NAV_ITEMS.map((item) => {
+              {NAV_ITEMS.filter((item) => !item.adminOnly || me?.admin).map((item) => {
                 const isActive = isNavActive(location.pathname, item.path)
 
                 return (

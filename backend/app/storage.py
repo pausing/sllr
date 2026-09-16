@@ -8,16 +8,23 @@ from typing import Any, Optional
 
 from src.sllr.config import get_lessons_db_path, get_live_data_dir
 from src.sllr.store import (
+    add_approver_mapping,
+    delete_approver_mapping,
     export_lessons_csv,
     find_lesson_by_id,
+    get_approver_blocks,
+    has_approver_mapping,
     import_lessons_csv,
     import_lessons_csv_path,
     init_store,
     insert_lesson,
     lesson_id_exists,
     lessons_to_csv_text,
+    list_approver_rows,
+    list_approvers_grouped,
     load_lessons,
     replace_lessons,
+    set_approver_blocks,
     suggest_next_id,
     update_lesson_row,
 )
@@ -45,20 +52,27 @@ def save_lessons_with_lock(
 
 
 __all__ = [
+    "add_approver_mapping",
+    "delete_approver_mapping",
     "export_lessons_csv",
     "find_lesson_by_id",
+    "get_approver_blocks",
     "get_data_dir",
     "get_lessons_path",
+    "has_approver_mapping",
     "import_lessons_csv",
     "import_lessons_csv_path",
     "init_store",
     "insert_lesson",
     "lesson_id_exists",
     "lessons_to_csv_text",
+    "list_approver_rows",
+    "list_approvers_grouped",
     "load_lessons",
     "load_lessons_with_lock",
     "replace_lessons",
     "save_lessons_with_lock",
+    "set_approver_blocks",
     "suggest_next_id",
     "update_lesson_row",
 ]

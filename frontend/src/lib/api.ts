@@ -36,6 +36,17 @@ export interface PortalMe {
   admin: boolean | null
 }
 
+export interface Approver {
+  email: string
+  technical_blocks: string[]
+}
+
+export interface MyApproverRules {
+  email: string | null
+  admin: boolean
+  technical_blocks: string[]
+}
+
 export interface KPIs {
   total_lessons: number
   repeated_issues_count: number
@@ -110,8 +121,7 @@ export const api = {
       body: JSON.stringify(lesson),
     })
     if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.detail?.errors?.join(', ') || err.detail || 'Failed to create lesson')
+      throw new Error(await readApiError(res, 'Failed to create lesson'))
     }
     return res.json()
   },
@@ -123,8 +133,7 @@ export const api = {
       body: JSON.stringify(lesson),
     })
     if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.detail?.errors?.join(', ') || err.detail || 'Failed to update lesson')
+      throw new Error(await readApiError(res, 'Failed to update lesson'))
     }
     return res.json()
   },
@@ -136,8 +145,7 @@ export const api = {
       body: JSON.stringify(patch),
     })
     if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.detail?.errors?.join(', ') || err.detail || 'Failed to patch lesson')
+      throw new Error(await readApiError(res, 'Failed to patch lesson'))
     }
     return res.json()
   },
@@ -204,4 +212,68 @@ export const api = {
     a.click()
     URL.revokeObjectURL(url)
   },
+
+  async getApprovers(): Promise<Approver[]> {
+    const res = await fetch(`${API_BASE}/approvers`)
+    if (!res.ok) throw new Error(await readApiError(res, 'Failed to fetch approvers'))
+    const data = await res.json()
+    return Array.isArray(data?.approvers) ? data.approvers : []
+  },
+
+  async getMyApproverRules(): Promise<MyApproverRules> {
+    const res = await fetch(`${API_BASE}/approvers/me`)
+    if (!res.ok) throw new Error(await readApiError(res, 'Failed to fetch approver rules'))
+    const data = await res.json()
+    return {
+      email: data?.email ?? null,
+      admin: data?.admin === true,
+      technical_blocks: Array.isArray(data?.technical_blocks) ? data.technical_blocks : [],
+    }
+  },
+
+  async setApproverBlocks(email: string, technical_blocks: string[]): Promise<Approver> {
+    const res = await fetch(`${API_BASE}/approvers`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, technical_blocks }),
+    })
+    if (!res.ok) throw new Error(await readApiError(res, 'Failed to save approver'))
+    return res.json()
+  },
+
+  async deleteApprover(email: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/approvers/${encodeURIComponent(email)}`, {
+      method: 'DELETE',
+    })
+    if (!res.ok) throw new Error(await readApiError(res, 'Failed to remove approver'))
+  },
+}
+
+function formatDetail(detail: unknown): string | null {
+  if (detail == null) return null
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === 'string') return item
+        if (item && typeof item === 'object' && 'msg' in item) {
+          return String((item as { msg: unknown }).msg)
+        }
+        return JSON.stringify(item)
+      })
+      .join(', ')
+  }
+  if (typeof detail === 'object' && Array.isArray((detail as { errors?: unknown }).errors)) {
+    return ((detail as { errors: unknown[] }).errors).map(String).join(', ')
+  }
+  return null
+}
+
+async function readApiError(res: Response, fallback: string): Promise<string> {
+  try {
+    const err = await res.json()
+    return formatDetail(err?.detail) || fallback
+  } catch {
+    return fallback
+  }
 }
