@@ -50,7 +50,7 @@ interface TextInputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
 export function TextInput({ className = '', ...props }: TextInputProps) {
   return (
     <input
-      className={`px-3 py-2 bg-panel border border-line rounded-md text-text placeholder-muted focus:outline-none focus:border-accent ${className}`}
+      className={`w-full px-3 py-2 bg-panel border border-line rounded-md text-text placeholder-muted focus:outline-none focus:border-accent ${className}`}
       {...props}
     />
   )
@@ -61,7 +61,7 @@ interface TextAreaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 export function TextArea({ className = '', ...props }: TextAreaProps) {
   return (
     <textarea
-      className={`px-3 py-2 bg-panel border border-line rounded-md text-text placeholder-muted focus:outline-none focus:border-accent ${className}`}
+      className={`w-full px-3 py-2 bg-panel border border-line rounded-md text-text placeholder-muted focus:outline-none focus:border-accent ${className}`}
       rows={3}
       {...props}
     />
@@ -75,7 +75,7 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
 export function Select({ options, className = '', ...props }: SelectProps) {
   return (
     <select
-      className={`px-3 py-2 bg-panel border border-line rounded-md text-text focus:outline-none focus:border-accent ${className}`}
+      className={`w-full px-3 py-2 bg-panel border border-line rounded-md text-text focus:outline-none focus:border-accent ${className}`}
       {...props}
     >
       {options.map((opt) => (
@@ -94,7 +94,7 @@ interface CardProps {
 
 export function Card({ children, className = '' }: CardProps) {
   return (
-    <div className={`bg-panel border border-line rounded-lg p-6 ${className}`}>
+    <div className={`bg-panel border border-line rounded-lg p-4 md:p-6 ${className}`}>
       {children}
     </div>
   )

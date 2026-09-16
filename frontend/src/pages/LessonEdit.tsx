@@ -42,7 +42,7 @@ export function LessonEdit() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-3xl font-bold text-text mb-6">Edit Lesson: {lesson['Lesson ID']}</h1>
+      <h1 className="text-2xl font-bold text-text mb-6 break-words md:text-3xl">Edit Lesson: {lesson['Lesson ID']}</h1>
       
       <Card>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -66,7 +66,7 @@ export function LessonEdit() {
             />
           </Field>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Field label="Category" required>
               <Select
                 options={refs.categories.map(v => ({ value: v, label: v }))}
@@ -86,7 +86,7 @@ export function LessonEdit() {
             </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Field label="Sub-category" required>
               <TextInput
                 value={lesson['Sub-category']}
@@ -146,7 +146,7 @@ export function LessonEdit() {
             />
           </Field>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Field label="Recommendation Due Date">
               <TextInput
                 type="date"
@@ -171,7 +171,7 @@ export function LessonEdit() {
             />
           </Field>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Field label="Status" required>
               <Select
                 options={refs.statuses.map(v => ({ value: v, label: v }))}
@@ -191,7 +191,7 @@ export function LessonEdit() {
             </Field>
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex flex-wrap gap-3 pt-4">
             <Button type="submit" variant="primary" disabled={loading}>
               {loading ? 'Saving...' : 'Save Changes'}
             </Button>

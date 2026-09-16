@@ -17,10 +17,10 @@ export function Duplicates() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-text mb-6">Duplicates</h1>
+      <h1 className="text-2xl font-bold text-text mb-6 md:text-3xl">Duplicates</h1>
       
       <Card>
-        <pre className="font-mono text-sm text-text whitespace-pre-wrap">{report}</pre>
+        <pre className="overflow-x-auto font-mono text-sm text-text whitespace-pre-wrap break-words">{report}</pre>
       </Card>
     </div>
   )

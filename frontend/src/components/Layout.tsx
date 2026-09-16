@@ -40,9 +40,46 @@ function isNavActive(pathname: string, itemPath: string): boolean {
   return winner?.path === itemPath
 }
 
+function NavLinks({
+  pathname,
+  isAdmin,
+  onNavigate,
+}: {
+  pathname: string
+  isAdmin: boolean
+  onNavigate?: () => void
+}) {
+  return (
+    <nav className="p-4">
+      <ul className="space-y-1">
+        {NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin).map((item) => {
+          const isActive = isNavActive(pathname, item.path)
+
+          return (
+            <li key={item.path}>
+              <Link
+                to={item.path}
+                onClick={onNavigate}
+                className={`flex min-h-11 items-center rounded-md px-3 py-2 text-sm transition-colors md:min-h-0 ${
+                  isActive
+                    ? 'bg-accent-dim font-medium text-accent'
+                    : 'text-muted hover:bg-raised hover:text-text'
+                }`}
+              >
+                {item.label}
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
+    </nav>
+  )
+}
+
 export function Layout() {
   const location = useLocation()
   const [me, setMe] = useState<PortalMe | null>(null)
+  const [navOpen, setNavOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -60,13 +97,49 @@ export function Layout() {
     }
   }, [])
 
+  useEffect(() => {
+    setNavOpen(false)
+  }, [location.pathname])
+
+  useEffect(() => {
+    if (!navOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNavOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [navOpen])
+
   const email = me?.email?.trim() ?? ''
+  const isAdmin = me?.admin === true
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="flex h-11 shrink-0 items-center justify-between gap-4 border-b border-line bg-panel px-4">
-        <div className="flex min-w-0 items-center gap-4">
-          <div className="text-[11px] uppercase tracking-[0.18em] text-accent">
+      <header className="relative z-50 flex h-11 shrink-0 items-center justify-between gap-2 border-b border-line bg-panel px-3 md:gap-4 md:px-4">
+        <div className="flex min-w-0 items-center gap-2 md:gap-4">
+          <button
+            type="button"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-text hover:bg-raised md:hidden"
+            aria-label={navOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={navOpen}
+            onClick={() => setNavOpen((open) => !open)}
+          >
+            {navOpen ? (
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 7h16M4 12h16M4 17h16" />
+              </svg>
+            )}
+          </button>
+          <div className="truncate text-[11px] uppercase tracking-[0.18em] text-accent">
             Lessons Learned
           </div>
           <a
@@ -77,9 +150,9 @@ export function Layout() {
           </a>
         </div>
         {email ? (
-          <p className="truncate text-[13px] text-muted">
+          <p className="min-w-0 max-w-[50%] truncate text-right text-[13px] text-muted">
             Hello, <span className="text-text">{email}</span>
-            {me?.admin ? (
+            {isAdmin ? (
               <span className="ml-2 inline-block align-middle rounded border border-line px-1 py-px text-[9px] uppercase tracking-wide text-muted">
                 admin
               </span>
@@ -89,32 +162,33 @@ export function Layout() {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <aside className="w-64 shrink-0 border-r border-line bg-panel">
-          <nav className="p-4">
-            <ul className="space-y-1">
-              {NAV_ITEMS.filter((item) => !item.adminOnly || me?.admin).map((item) => {
-                const isActive = isNavActive(location.pathname, item.path)
+        {navOpen ? (
+          <button
+            type="button"
+            className="fixed inset-x-0 bottom-0 top-11 z-40 border-0 bg-[#0c0e12]/70 p-0 md:hidden"
+            aria-label="Close menu"
+            onClick={() => setNavOpen(false)}
+          />
+        ) : null}
 
-                return (
-                  <li key={item.path}>
-                    <Link
-                      to={item.path}
-                      className={`block rounded-md px-3 py-2 text-sm transition-colors ${
-                        isActive
-                          ? 'bg-accent-dim font-medium text-accent'
-                          : 'text-muted hover:bg-raised hover:text-text'
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
-          </nav>
+        <aside
+          className={`fixed bottom-0 left-0 top-11 z-40 w-64 border-r border-line bg-panel transition-transform duration-200 md:hidden ${
+            navOpen ? 'translate-x-0' : 'pointer-events-none -translate-x-full'
+          }`}
+          aria-hidden={!navOpen}
+        >
+          <NavLinks
+            pathname={location.pathname}
+            isAdmin={isAdmin}
+            onNavigate={() => setNavOpen(false)}
+          />
         </aside>
 
-        <main className="flex-1 overflow-auto p-8">
+        <aside className="hidden w-64 shrink-0 border-r border-line bg-panel md:block">
+          <NavLinks pathname={location.pathname} isAdmin={isAdmin} />
+        </aside>
+
+        <main className="min-w-0 flex-1 overflow-auto p-4 md:p-8">
           <Outlet />
         </main>
       </div>

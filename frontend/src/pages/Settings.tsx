@@ -147,7 +147,7 @@ export function Settings() {
   if (!isAdmin) {
     return (
       <div>
-        <h1 className="text-3xl font-bold text-text mb-2">Settings</h1>
+        <h1 className="text-2xl font-bold text-text mb-2 md:text-3xl">Settings</h1>
         <p className="text-muted">Portal admin required to edit vocabulary presets.</p>
       </div>
     )
@@ -158,7 +158,7 @@ export function Settings() {
   return (
     <div className="max-w-4xl">
       <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-accent">Administration</p>
-      <h1 className="mb-2 text-3xl font-bold text-text">Settings</h1>
+      <h1 className="mb-2 text-2xl font-bold text-text md:text-3xl">Settings</h1>
       <p className="mb-8 max-w-2xl text-muted">
         Manage the controlled vocabulary used on lesson forms and validation. Changes are stored
         live (no image rebuild). Statuses stay as shipped defaults.
@@ -175,7 +175,7 @@ export function Settings() {
               setTab(item.id)
               setEditing(null)
             }}
-            className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            className={`min-h-11 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
               tab === item.id
                 ? 'bg-accent-dim text-accent'
                 : 'border border-line bg-panel text-muted hover:text-text'
@@ -190,7 +190,7 @@ export function Settings() {
         <h2 className="mb-1 text-lg font-medium text-text">Add {tabMeta.singular}</h2>
         <p className="mb-4 text-sm text-muted">{tabMeta.help}</p>
         <form onSubmit={handleAdd} className="flex flex-wrap items-end gap-3">
-          <div className="min-w-40 flex-1">
+          <div className="min-w-0 w-full flex-1 sm:min-w-40">
             <label className="mb-1 block text-sm font-medium text-text" htmlFor="vocab-code">
               Code
             </label>
@@ -202,7 +202,7 @@ export function Settings() {
               className="w-full"
             />
           </div>
-          <div className="min-w-40 flex-1">
+          <div className="min-w-0 w-full flex-1 sm:min-w-40">
             <label className="mb-1 block text-sm font-medium text-text" htmlFor="vocab-label">
               Label
             </label>
@@ -226,7 +226,7 @@ export function Settings() {
         </Card>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-line bg-panel">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[36rem] text-sm">
             <thead>
               <tr className="border-b border-line text-left text-muted">
                 {tab === 'phases' ? <th className="px-4 py-3 font-medium w-24">Order</th> : null}

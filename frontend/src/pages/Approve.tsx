@@ -41,7 +41,7 @@ export function Approve() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-text mb-6">Approve / Update Status</h1>
+      <h1 className="text-2xl font-bold text-text mb-6 md:text-3xl">Approve / Update Status</h1>
       
       <p className="text-muted mb-6">
         Move lessons along the lifecycle: <strong>Draft</strong> → <strong>Approved</strong>.
@@ -55,11 +55,11 @@ export function Approve() {
           <h3 className="text-lg font-medium text-text mb-4">Draft Lessons (Ready to Approve)</h3>
           <div className="space-y-3">
             {draftLessons.map((lesson) => (
-              <div key={lesson['Lesson ID']} className="flex items-center justify-between p-3 bg-raised rounded-md">
-                <div>
+              <div key={lesson['Lesson ID']} className="flex flex-col gap-3 p-3 bg-raised rounded-md sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                   <div className="font-mono text-sm text-accent mb-1">{lesson['Lesson ID']}</div>
-                  <div className="text-text">{lesson.Title}</div>
-                  <div className="text-sm text-muted">
+                  <div className="text-text break-words">{lesson.Title}</div>
+                  <div className="text-sm text-muted break-words">
                     {lesson['Technical Block']} · Owner: {lesson.Owner}
                   </div>
                 </div>
@@ -85,13 +85,13 @@ export function Approve() {
             {visibleLessons.map((lesson) => {
               const canAct = canChangeLessonStatus(lesson, isAdmin, allowedBlocks)
               return (
-                <div key={lesson['Lesson ID']} className="flex items-center justify-between p-3 bg-raised rounded-md">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-1">
+                <div key={lesson['Lesson ID']} className="flex flex-col gap-3 p-3 bg-raised rounded-md sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex flex-wrap items-center gap-3">
                       <span className="font-mono text-sm text-accent">{lesson['Lesson ID']}</span>
                       <StatusDot status={lesson.Status} />
                     </div>
-                    <div className="text-text">{lesson.Title}</div>
+                    <div className="text-text break-words">{lesson.Title}</div>
                     <div className="text-sm text-muted">{lesson['Technical Block']}</div>
                   </div>
                   {canAct ? (
@@ -99,7 +99,7 @@ export function Approve() {
                       options={refs.statuses.map(v => ({ value: v, label: v }))}
                       value={lesson.Status}
                       onChange={(e) => handleStatusChange(lesson, e.target.value)}
-                      className="w-40"
+                      className="w-full sm:w-40"
                     />
                   ) : (
                     <span className="text-sm text-muted">View only</span>
