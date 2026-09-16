@@ -43,6 +43,30 @@ def is_portal_admin(request: Request) -> bool:
     return portal_identity(request)["admin"] is True
 
 
+def emails_match(left: Optional[str], right: Optional[str]) -> bool:
+    """True when both values normalize to the same non-empty email."""
+    a = normalize_email(left)
+    b = normalize_email(right)
+    return bool(a) and a == b
+
+
+def can_edit_lesson(request: Request, owner: Optional[str]) -> bool:
+    """Portal admin or the lesson Owner (case-insensitive, trimmed email)."""
+    if is_portal_admin(request):
+        return True
+    return emails_match(portal_identity(request).get("email"), owner)
+
+
+def require_lesson_editor(request: Request, owner: Optional[str]) -> dict[str, Any]:
+    ident = portal_identity(request)
+    if can_edit_lesson(request, owner):
+        return ident
+    raise HTTPException(
+        status_code=403,
+        detail="Only the lesson owner or a portal admin can edit this lesson.",
+    )
+
+
 def require_portal_admin(request: Request, detail: str | None = None) -> dict[str, Any]:
     ident = portal_identity(request)
     if ident["admin"] is not True:
