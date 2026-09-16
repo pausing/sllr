@@ -9,7 +9,9 @@ from typing import Any, Optional
 from src.sllr.config import get_lessons_db_path, get_live_data_dir
 from src.sllr.store import (
     add_approver_mapping,
+    create_vocab,
     delete_approver_mapping,
+    delete_vocab,
     export_lessons_csv,
     find_lesson_by_id,
     get_approver_blocks,
@@ -20,13 +22,19 @@ from src.sllr.store import (
     insert_lesson,
     lesson_id_exists,
     lessons_to_csv_text,
+    list_all_vocab,
     list_approver_rows,
+    list_approvers_by_block,
     list_approvers_grouped,
+    list_vocab,
     load_lessons,
+    reorder_vocab,
     replace_lessons,
     set_approver_blocks,
+    set_approvers_for_block,
     suggest_next_id,
     update_lesson_row,
+    update_vocab,
 )
 
 
@@ -53,7 +61,9 @@ def save_lessons_with_lock(
 
 __all__ = [
     "add_approver_mapping",
+    "create_vocab",
     "delete_approver_mapping",
+    "delete_vocab",
     "export_lessons_csv",
     "find_lesson_by_id",
     "get_approver_blocks",
@@ -66,13 +76,19 @@ __all__ = [
     "insert_lesson",
     "lesson_id_exists",
     "lessons_to_csv_text",
+    "list_all_vocab",
     "list_approver_rows",
+    "list_approvers_by_block",
     "list_approvers_grouped",
+    "list_vocab",
     "load_lessons",
     "load_lessons_with_lock",
+    "reorder_vocab",
     "replace_lessons",
     "save_lessons_with_lock",
     "set_approver_blocks",
+    "set_approvers_for_block",
     "suggest_next_id",
     "update_lesson_row",
+    "update_vocab",
 ]

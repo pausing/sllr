@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import REFERENCE_FILES, REF_CODE_COLUMN
-from .store import load_lessons, replace_lessons
+from .store import load_lessons, load_live_reference_codes, replace_lessons
 
 
 def load_reference(path: Path) -> list[str]:
@@ -25,10 +25,11 @@ def load_reference(path: Path) -> list[str]:
 
 
 def load_all_references() -> dict[str, list[str]]:
-    """Load all reference files into a dict: ref_name -> list of valid values."""
+    """Load controlled vocab: live SQLite for categories/blocks/phases, CSV for the rest."""
     out = {}
     for name, path in REFERENCE_FILES.items():
         out[name] = load_reference(path)
+    out.update(load_live_reference_codes())
     return out
 
 

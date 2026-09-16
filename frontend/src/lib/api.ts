@@ -41,10 +41,35 @@ export interface Approver {
   technical_blocks: string[]
 }
 
+export interface ApproverBlock {
+  technical_block: string
+  emails: string[]
+}
+
+export interface ApproversPayload {
+  approvers: Approver[]
+  blocks: ApproverBlock[]
+}
+
 export interface MyApproverRules {
   email: string | null
   admin: boolean
   technical_blocks: string[]
+}
+
+export interface VocabItem {
+  kind: string
+  code: string
+  label: string
+  sort_order: number
+  active: boolean
+}
+
+export type VocabKind = 'categories' | 'technical_blocks' | 'phases'
+
+export interface SllrUser {
+  email: string
+  name?: string | null
 }
 
 export interface KPIs {
@@ -213,11 +238,14 @@ export const api = {
     URL.revokeObjectURL(url)
   },
 
-  async getApprovers(): Promise<Approver[]> {
+  async getApprovers(): Promise<ApproversPayload> {
     const res = await fetch(`${API_BASE}/approvers`)
     if (!res.ok) throw new Error(await readApiError(res, 'Failed to fetch approvers'))
     const data = await res.json()
-    return Array.isArray(data?.approvers) ? data.approvers : []
+    return {
+      approvers: Array.isArray(data?.approvers) ? data.approvers : [],
+      blocks: Array.isArray(data?.blocks) ? data.blocks : [],
+    }
   },
 
   async getMyApproverRules(): Promise<MyApproverRules> {
@@ -241,11 +269,109 @@ export const api = {
     return res.json()
   },
 
+  async setBlockApprovers(technical_block: string, emails: string[]): Promise<ApproverBlock> {
+    const res = await fetch(`${API_BASE}/approvers/block`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ technical_block, emails }),
+    })
+    if (!res.ok) throw new Error(await readApiError(res, 'Failed to save block approver'))
+    return res.json()
+  },
+
+  async addBlockApprover(technical_block: string, email: string): Promise<ApproverBlock> {
+    const res = await fetch(`${API_BASE}/approvers/block`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ technical_block, email }),
+    })
+    if (!res.ok) throw new Error(await readApiError(res, 'Failed to add secondary approver'))
+    return res.json()
+  },
+
   async deleteApprover(email: string): Promise<void> {
     const res = await fetch(`${API_BASE}/approvers/${encodeURIComponent(email)}`, {
       method: 'DELETE',
     })
     if (!res.ok) throw new Error(await readApiError(res, 'Failed to remove approver'))
+  },
+
+  async deleteApproverBlock(email: string, technical_block: string): Promise<void> {
+    const res = await fetch(
+      `${API_BASE}/approvers/${encodeURIComponent(email)}/${encodeURIComponent(technical_block)}`,
+      { method: 'DELETE' },
+    )
+    if (!res.ok) throw new Error(await readApiError(res, 'Failed to remove approver mapping'))
+  },
+
+  async getPortalSllrUsers(): Promise<{ users: SllrUser[]; available: boolean }> {
+    try {
+      const res = await fetch('https://portal.powerlearn.us/api/sllr-users', {
+        credentials: 'include',
+      })
+      if (!res.ok) return { users: [], available: false }
+      const data = await res.json()
+      return { users: parseSllrUsers(data), available: true }
+    } catch {
+      return { users: [], available: false }
+    }
+  },
+
+  async getVocab(): Promise<Record<VocabKind, VocabItem[]>> {
+    const res = await fetch(`${API_BASE}/settings/vocab`)
+    if (!res.ok) throw new Error(await readApiError(res, 'Failed to fetch settings'))
+    const data = await res.json()
+    return {
+      categories: Array.isArray(data?.categories) ? data.categories : [],
+      technical_blocks: Array.isArray(data?.technical_blocks) ? data.technical_blocks : [],
+      phases: Array.isArray(data?.phases) ? data.phases : [],
+    }
+  },
+
+  async createVocab(kind: VocabKind, code: string, label?: string): Promise<VocabItem> {
+    const res = await fetch(`${API_BASE}/settings/vocab/${encodeURIComponent(kind)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, label: label || code }),
+    })
+    if (!res.ok) throw new Error(await readApiError(res, 'Failed to add code'))
+    return res.json()
+  },
+
+  async updateVocab(
+    kind: VocabKind,
+    code: string,
+    patch: { code?: string; label?: string; active?: boolean; sort_order?: number },
+  ): Promise<VocabItem> {
+    const res = await fetch(
+      `${API_BASE}/settings/vocab/${encodeURIComponent(kind)}/${encodeURIComponent(code)}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      },
+    )
+    if (!res.ok) throw new Error(await readApiError(res, 'Failed to update code'))
+    return res.json()
+  },
+
+  async deleteVocab(kind: VocabKind, code: string): Promise<void> {
+    const res = await fetch(
+      `${API_BASE}/settings/vocab/${encodeURIComponent(kind)}/${encodeURIComponent(code)}`,
+      { method: 'DELETE' },
+    )
+    if (!res.ok) throw new Error(await readApiError(res, 'Failed to delete code'))
+  },
+
+  async reorderVocab(kind: VocabKind, codes: string[]): Promise<VocabItem[]> {
+    const res = await fetch(`${API_BASE}/settings/vocab/${encodeURIComponent(kind)}/order`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codes }),
+    })
+    if (!res.ok) throw new Error(await readApiError(res, 'Failed to reorder'))
+    const data = await res.json()
+    return Array.isArray(data?.items) ? data.items : []
   },
 }
 
@@ -276,4 +402,34 @@ async function readApiError(res: Response, fallback: string): Promise<string> {
   } catch {
     return fallback
   }
+}
+
+function parseSllrUsers(data: unknown): SllrUser[] {
+  const rows: unknown[] = Array.isArray(data)
+    ? data
+    : data && typeof data === 'object'
+      ? Array.isArray((data as { users?: unknown }).users)
+        ? (data as { users: unknown[] }).users
+        : Array.isArray((data as { emails?: unknown }).emails)
+          ? (data as { emails: unknown[] }).emails
+          : []
+      : []
+  const users: SllrUser[] = []
+  const seen = new Set<string>()
+  for (const row of rows) {
+    let email = ''
+    let name: string | null = null
+    if (typeof row === 'string') {
+      email = row.trim().toLowerCase()
+    } else if (row && typeof row === 'object') {
+      const rec = row as { email?: unknown; name?: unknown; display_name?: unknown }
+      email = typeof rec.email === 'string' ? rec.email.trim().toLowerCase() : ''
+      const rawName = rec.name ?? rec.display_name
+      name = typeof rawName === 'string' && rawName.trim() ? rawName.trim() : null
+    }
+    if (!email || !email.includes('@') || seen.has(email)) continue
+    seen.add(email)
+    users.push({ email, name })
+  }
+  return users
 }

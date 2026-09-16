@@ -10,6 +10,7 @@ const NAV_ITEMS: { path: string; label: string; adminOnly?: boolean }[] = [
   { path: '/lessons/new', label: 'Add Lesson' },
   { path: '/approve', label: 'Approve' },
   { path: '/approvers', label: 'Approvers', adminOnly: true },
+  { path: '/settings', label: 'Settings', adminOnly: true },
   { path: '/implementation', label: 'Implementation' },
   { path: '/validation', label: 'Validation' },
   { path: '/duplicates', label: 'Duplicates' },
