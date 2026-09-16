@@ -1,35 +1,71 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
-import { api, Lesson, References } from '../lib/api'
-import { Card, Button, Field, TextInput, TextArea, Select } from '../components/ui'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { LessonForm } from '../components/LessonForm'
+import { Button, Card, StatusDot } from '../components/ui'
+import { api, Lesson, PortalMe, References } from '../lib/api'
+import { canEditLesson } from '../lib/lessonAccess'
+
+function displayValue(value?: string | null): string {
+  const text = (value ?? '').trim()
+  return text || '—'
+}
+
+function DetailField({ label, value, wide }: { label: string; value?: string | null; wide?: boolean }) {
+  return (
+    <div className={wide ? 'sm:col-span-2' : undefined}>
+      <div className="text-xs font-medium uppercase tracking-wide text-muted">{label}</div>
+      <div className="mt-1 whitespace-pre-wrap break-words text-text">{displayValue(value)}</div>
+    </div>
+  )
+}
 
 export function LessonEdit() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [refs, setRefs] = useState<References | null>(null)
+  const [me, setMe] = useState<PortalMe | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  let lessonId = id ?? ''
+  try {
+    lessonId = lessonId ? decodeURIComponent(lessonId) : ''
+  } catch {
+    /* keep raw id if it is not valid percent-encoding */
+  }
+  const allowedToEdit = canEditLesson(me, lesson?.Owner)
+  const wantEdit = searchParams.get('edit') === '1'
+  const editing = allowedToEdit && wantEdit
+
   useEffect(() => {
-    if (!id) return
-    Promise.all([api.getLesson(id), api.getReferences()])
-      .then(([l, r]) => {
+    if (!lessonId) return
+    Promise.all([api.getLesson(lessonId), api.getReferences(), api.getMe().catch(() => null)])
+      .then(([l, r, user]) => {
         setLesson(l)
         setRefs(r)
+        setMe(user)
       })
       .catch(console.error)
-  }, [id])
+  }, [lessonId])
+
+  const setEditing = (on: boolean) => {
+    const next = new URLSearchParams(searchParams)
+    if (on) next.set('edit', '1')
+    else next.delete('edit')
+    setSearchParams(next, { replace: true })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!id || !lesson) return
-    
+    if (!lessonId || !lesson || !allowedToEdit) return
+
     setLoading(true)
     setError('')
-    
+
     try {
-      await api.updateLesson(id, lesson)
+      await api.updateLesson(lessonId, lesson)
       navigate('/lessons')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update lesson')
@@ -41,166 +77,90 @@ export function LessonEdit() {
   if (!lesson || !refs) return <div className="text-muted">Loading...</div>
 
   return (
-    <div className="max-w-3xl">
-      <h1 className="text-2xl font-bold text-text mb-6 break-words md:text-3xl">Edit Lesson: {lesson['Lesson ID']}</h1>
-      
-      <Card>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <div className="p-4 bg-danger/10 border border-danger rounded-md text-danger text-sm">
-              {error}
+    <div className="mx-auto max-w-3xl">
+      <div className="mb-4">
+        <Link to="/lessons" className="text-sm text-accent hover:underline">
+          ← Back to Browse
+        </Link>
+      </div>
+
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="mb-2 flex flex-wrap items-center gap-3">
+            <span className="font-mono text-sm text-accent">{lesson['Lesson ID']}</span>
+            <StatusDot status={lesson.Status} />
+          </div>
+          <h1 className="break-words text-2xl font-bold text-text md:text-3xl">
+            {editing ? `Edit Lesson` : lesson.Title}
+          </h1>
+          {editing ? (
+            <p className="mt-1 font-mono text-sm text-muted">{lesson['Lesson ID']}</p>
+          ) : null}
+        </div>
+        {allowedToEdit && !editing ? (
+          <Button variant="primary" className="shrink-0" onClick={() => setEditing(true)}>
+            Edit
+          </Button>
+        ) : null}
+      </div>
+
+      {editing ? (
+        <Card>
+          <LessonForm
+            lesson={lesson}
+            refs={refs}
+            error={error}
+            loading={loading}
+            onChange={setLesson}
+            onSubmit={handleSubmit}
+            onCancel={() => setEditing(false)}
+          />
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          <Card>
+            <h2 className="mb-4 text-lg font-medium text-text">Overview</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <DetailField label="Lesson ID" value={lesson['Lesson ID']} />
+              <DetailField label="Title" value={lesson.Title} />
+              <DetailField label="Status" value={lesson.Status} />
+              <DetailField label="Implementation Status" value={lesson['Implementation Status']} />
+              <DetailField label="Owner" value={lesson.Owner} />
+              <DetailField label="Keywords" value={lesson.Keywords} />
             </div>
-          )}
+          </Card>
 
-          <Field label="Lesson ID" required>
-            <TextInput value={lesson['Lesson ID']} disabled />
-            <p className="text-xs text-muted mt-1">Lesson ID cannot be changed</p>
-          </Field>
+          <Card>
+            <h2 className="mb-4 text-lg font-medium text-text">Classification</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <DetailField label="Category" value={lesson.Category} />
+              <DetailField label="Technical Block" value={lesson['Technical Block']} />
+              <DetailField label="Sub-category" value={lesson['Sub-category']} />
+              <DetailField label="Project Phase" value={lesson['Project Phase']} />
+            </div>
+          </Card>
 
-          <Field label="Title" required>
-            <TextInput
-              value={lesson.Title}
-              onChange={(e) => setLesson({ ...lesson, Title: e.target.value })}
-              maxLength={200}
-              required
-            />
-          </Field>
+          <Card>
+            <h2 className="mb-4 text-lg font-medium text-text">What we learned</h2>
+            <div className="grid grid-cols-1 gap-4">
+              <DetailField label="Root Cause" value={lesson['Root Cause']} wide />
+              <DetailField label="What Happened" value={lesson['What Happened']} wide />
+              <DetailField label="Impact" value={lesson.Impact} wide />
+              <DetailField label="Lesson Learned" value={lesson['Lesson Learned']} wide />
+              <DetailField label="Recommendation" value={lesson.Recommendation} wide />
+              <DetailField label="Recommendation Due Date" value={lesson['Recommendation Due Date']} />
+            </div>
+          </Card>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Field label="Category" required>
-              <Select
-                options={refs.categories.map(v => ({ value: v, label: v }))}
-                value={lesson.Category}
-                onChange={(e) => setLesson({ ...lesson, Category: e.target.value })}
-                required
-              />
-            </Field>
-
-            <Field label="Technical Block" required>
-              <Select
-                options={refs.technical_blocks.map(v => ({ value: v, label: v }))}
-                value={lesson['Technical Block']}
-                onChange={(e) => setLesson({ ...lesson, 'Technical Block': e.target.value })}
-                required
-              />
-            </Field>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Field label="Sub-category" required>
-              <TextInput
-                value={lesson['Sub-category']}
-                onChange={(e) => setLesson({ ...lesson, 'Sub-category': e.target.value })}
-                required
-              />
-            </Field>
-
-            <Field label="Project Phase" required>
-              <Select
-                options={refs.phases.map(v => ({ value: v, label: v }))}
-                value={lesson['Project Phase']}
-                onChange={(e) => setLesson({ ...lesson, 'Project Phase': e.target.value })}
-                required
-              />
-            </Field>
-          </div>
-
-          <Field label="Root Cause" required>
-            <TextArea
-              value={lesson['Root Cause']}
-              onChange={(e) => setLesson({ ...lesson, 'Root Cause': e.target.value })}
-              required
-            />
-          </Field>
-
-          <Field label="What Happened" required>
-            <TextArea
-              value={lesson['What Happened']}
-              onChange={(e) => setLesson({ ...lesson, 'What Happened': e.target.value })}
-              required
-            />
-          </Field>
-
-          <Field label="Impact" required>
-            <TextInput
-              value={lesson.Impact}
-              onChange={(e) => setLesson({ ...lesson, Impact: e.target.value })}
-              required
-            />
-          </Field>
-
-          <Field label="Lesson Learned" required>
-            <TextArea
-              value={lesson['Lesson Learned']}
-              onChange={(e) => setLesson({ ...lesson, 'Lesson Learned': e.target.value })}
-              maxLength={500}
-              required
-            />
-          </Field>
-
-          <Field label="Recommendation" required>
-            <TextArea
-              value={lesson.Recommendation}
-              onChange={(e) => setLesson({ ...lesson, Recommendation: e.target.value })}
-              required
-            />
-          </Field>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Field label="Recommendation Due Date">
-              <TextInput
-                type="date"
-                value={lesson['Recommendation Due Date'] || ''}
-                onChange={(e) => setLesson({ ...lesson, 'Recommendation Due Date': e.target.value })}
-              />
-            </Field>
-
-            <Field label="Owner" required>
-              <TextInput
-                value={lesson.Owner}
-                onChange={(e) => setLesson({ ...lesson, Owner: e.target.value })}
-                required
-              />
-            </Field>
-          </div>
-
-          <Field label="Keywords">
-            <TextInput
-              value={lesson.Keywords || ''}
-              onChange={(e) => setLesson({ ...lesson, Keywords: e.target.value })}
-            />
-          </Field>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Field label="Status" required>
-              <Select
-                options={refs.statuses.map(v => ({ value: v, label: v }))}
-                value={lesson.Status}
-                onChange={(e) => setLesson({ ...lesson, Status: e.target.value })}
-                required
-              />
-            </Field>
-
-            <Field label="Implementation Status" required>
-              <Select
-                options={refs.implementation_statuses.map(v => ({ value: v, label: v }))}
-                value={lesson['Implementation Status']}
-                onChange={(e) => setLesson({ ...lesson, 'Implementation Status': e.target.value })}
-                required
-              />
-            </Field>
-          </div>
-
-          <div className="flex flex-wrap gap-3 pt-4">
-            <Button type="submit" variant="primary" disabled={loading}>
-              {loading ? 'Saving...' : 'Save Changes'}
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => navigate('/lessons')}>
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </Card>
+          <Card>
+            <h2 className="mb-4 text-lg font-medium text-text">Record</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <DetailField label="Created Date" value={lesson['Created Date']} />
+              <DetailField label="Modified Date" value={lesson['Modified Date']} />
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import { api, Lesson, References } from '../lib/api'
+import { api, Lesson, PortalMe, References } from '../lib/api'
+import { canEditLesson, lessonPath } from '../lib/lessonAccess'
 import { Card, Button, Select, StatusDot } from '../components/ui'
 
 export function Lessons() {
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [refs, setRefs] = useState<References | null>(null)
+  const [me, setMe] = useState<PortalMe | null>(null)
   const [filters, setFilters] = useState({
     technical_block: '',
     phase: '',
@@ -15,10 +17,11 @@ export function Lessons() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([api.getReferences(), api.getLessons()])
-      .then(([r, l]) => {
+    Promise.all([api.getReferences(), api.getLessons(), api.getMe().catch(() => null)])
+      .then(([r, l, user]) => {
         setRefs(r)
         setLessons(l)
+        setMe(user)
       })
       .catch(console.error)
       .finally(() => setLoading(false))
@@ -30,16 +33,6 @@ export function Lessons() {
       .then(setLessons)
       .catch(console.error)
       .finally(() => setLoading(false))
-  }
-
-  const handleStatusChange = async (id: string, newStatus: string) => {
-    try {
-      await api.patchLesson(id, { Status: newStatus })
-      const updated = await api.getLessons(filters)
-      setLessons(updated)
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to update status')
-    }
   }
 
   if (!refs) return <div className="text-muted">Loading...</div>
@@ -90,39 +83,41 @@ export function Lessons() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {lessons.map((lesson) => (
-            <Card key={lesson['Lesson ID']} className="hover:border-accent transition-colors">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 flex-1">
-                  <div className="mb-2 flex flex-wrap items-center gap-3">
-                    <span className="text-accent font-mono text-sm">{lesson['Lesson ID']}</span>
-                    <StatusDot status={lesson.Status} />
-                  </div>
-                  <h3 className="text-lg font-medium text-text mb-2">{lesson.Title}</h3>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
-                    <span>{lesson['Project Phase']}</span>
-                    <span className="hidden sm:inline">•</span>
-                    <span>{lesson.Category}</span>
-                    <span className="hidden sm:inline">•</span>
-                    <span>{lesson['Technical Block']}</span>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2 sm:shrink-0">
-                  <Link to={`/lessons/${lesson['Lesson ID']}`}>
-                    <Button variant="ghost">Edit</Button>
+          {lessons.map((lesson) => {
+            const id = lesson['Lesson ID']
+            const href = lessonPath(id)
+            const showEdit = canEditLesson(me, lesson.Owner)
+            return (
+              <Card key={id} className="hover:border-accent transition-colors">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <Link to={href} className="min-w-0 flex-1 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                    <div className="mb-2 flex flex-wrap items-center gap-3">
+                      <span className="text-accent font-mono text-sm">{id}</span>
+                      <StatusDot status={lesson.Status} />
+                    </div>
+                    <h3 className="text-lg font-medium text-text mb-2 hover:text-accent">{lesson.Title}</h3>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
+                      <span>{lesson['Project Phase']}</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span>{lesson.Category}</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span>{lesson['Technical Block']}</span>
+                    </div>
                   </Link>
-                  {refs && (
-                    <Select
-                      options={refs.statuses.map(v => ({ value: v, label: v }))}
-                      value={lesson.Status}
-                      onChange={(e) => handleStatusChange(lesson['Lesson ID'], e.target.value)}
-                      className="text-sm"
-                    />
-                  )}
+                  <div className="flex flex-wrap gap-2 sm:shrink-0">
+                    <Link to={href}>
+                      <Button variant="primary">View</Button>
+                    </Link>
+                    {showEdit ? (
+                      <Link to={lessonPath(id, true)}>
+                        <Button variant="ghost">Edit</Button>
+                      </Link>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            )
+          })}
         </div>
       )}
     </div>

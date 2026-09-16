@@ -16,7 +16,7 @@ from backend.app.storage import (
     suggest_next_id,
     update_lesson_row,
 )
-from backend.app.identity import resolve_owner
+from backend.app.identity import require_lesson_editor, resolve_owner
 from src.sllr.loaders import load_all_references
 from src.sllr.validation import validate_lesson
 
@@ -87,6 +87,15 @@ class LessonPatch(BaseModel):
 
     class Config:
         populate_by_name = True
+
+
+_STATUS_PATCH_FIELDS = frozenset({"status", "implementation_status"})
+
+
+def _patch_changes_content(patch: LessonPatch) -> bool:
+    """True when the patch includes fields other than status transitions."""
+    payload = patch.model_dump(exclude_unset=True)
+    return bool(set(payload) - _STATUS_PATCH_FIELDS)
 
 
 @router.get("/lessons")
@@ -188,6 +197,8 @@ async def update_lesson(lesson_id: str, lesson: LessonUpdate, request: Request):
     existing = find_lesson_by_id(lesson_id)
     if not existing:
         raise HTTPException(status_code=404, detail=f"Lesson {lesson_id} not found")
+
+    require_lesson_editor(request, existing.get("Owner"))
     
     # Build updated row
     now = datetime.now().strftime("%Y-%m-%d")
@@ -245,6 +256,9 @@ async def patch_lesson(lesson_id: str, patch: LessonPatch, request: Request):
     existing = find_lesson_by_id(lesson_id)
     if not existing:
         raise HTTPException(status_code=404, detail=f"Lesson {lesson_id} not found")
+
+    if _patch_changes_content(patch):
+        require_lesson_editor(request, existing.get("Owner"))
     
     # Build patched row
     now = datetime.now().strftime("%Y-%m-%d")
