@@ -7,6 +7,7 @@ import { LessonEdit } from './pages/LessonEdit'
 import { Approve } from './pages/Approve'
 import { Approvers } from './pages/Approvers'
 import { Settings } from './pages/Settings'
+import { Activity } from './pages/Activity'
 import { Implementation } from './pages/Implementation'
 import { Validation } from './pages/Validation'
 import { Duplicates } from './pages/Duplicates'
@@ -25,6 +26,7 @@ function App() {
         <Route path="approve" element={<Approve />} />
         <Route path="approvers" element={<Approvers />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="activity" element={<Activity />} />
         <Route path="implementation" element={<Implementation />} />
         <Route path="validation" element={<Validation />} />
         <Route path="duplicates" element={<Duplicates />} />

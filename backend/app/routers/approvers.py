@@ -4,6 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from backend.app.activity import log_activity
 from backend.app.identity import normalize_email, portal_identity, require_portal_admin
 from backend.app.storage import (
     add_approver_mapping,
@@ -95,7 +96,18 @@ async def replace_block_approvers(payload: ApproverBlockSet, request: Request):
         emails.extend(payload.emails)
     elif payload.email:
         emails.append(payload.email)
+    before = next(
+        (row for row in list_approvers_by_block() if row["technical_block"] == block),
+        {"technical_block": block, "emails": []},
+    )
     stored = set_approvers_for_block(block, emails)
+    log_activity(
+        request,
+        "set_approvers",
+        entity_type="approver_block",
+        entity_id=block,
+        values={"before": before, "after": {"technical_block": block, "emails": stored}},
+    )
     return {"technical_block": block, "emails": stored}
 
 
@@ -115,6 +127,13 @@ async def add_block_approver(payload: ApproverBlockSet, request: Request):
         (row for row in list_approvers_by_block() if row["technical_block"] == block),
         {"technical_block": block, "emails": []},
     )
+    log_activity(
+        request,
+        "add_approver",
+        entity_type="approver_block",
+        entity_id=block,
+        values={"after": current, "added": {"email": email, "technical_block": block}},
+    )
     return current
 
 
@@ -127,7 +146,15 @@ async def replace_approver_blocks(payload: ApproverSet, request: Request):
         raise HTTPException(status_code=422, detail="email is required")
     blocks = [b.strip() for b in payload.technical_blocks if (b or "").strip()]
     _require_known_blocks(blocks)
+    before = get_approver_blocks(email)
     stored = set_approver_blocks(email, blocks)
+    log_activity(
+        request,
+        "set_approvers",
+        entity_type="approver",
+        entity_id=email,
+        values={"before": {"email": email, "technical_blocks": before}, "after": {"email": email, "technical_blocks": stored}},
+    )
     return {"email": email, "technical_blocks": stored}
 
 
@@ -147,9 +174,18 @@ async def add_approver(payload: ApproverAdd, request: Request):
     if not blocks:
         raise HTTPException(status_code=422, detail="technical_block is required")
     _require_known_blocks(blocks)
+    before = get_approver_blocks(email)
     for block in blocks:
         add_approver_mapping(email, block)
-    return {"email": email, "technical_blocks": get_approver_blocks(email)}
+    after = get_approver_blocks(email)
+    log_activity(
+        request,
+        "add_approver",
+        entity_type="approver",
+        entity_id=email,
+        values={"before": {"email": email, "technical_blocks": before}, "after": {"email": email, "technical_blocks": after}},
+    )
+    return {"email": email, "technical_blocks": after}
 
 
 @router.delete("/approvers/{email}")
@@ -157,7 +193,15 @@ async def delete_approver(email: str, request: Request):
     """Remove all mappings for an email (admin only)."""
     require_portal_admin(request, "Portal admin required to manage approvers.")
     normalized = normalize_email(email)
+    before = get_approver_blocks(normalized)
     deleted = delete_approver_mapping(normalized)
+    log_activity(
+        request,
+        "delete_approver",
+        entity_type="approver",
+        entity_id=normalized,
+        values={"before": {"email": normalized, "technical_blocks": before}, "deleted": deleted},
+    )
     return {"email": normalized, "deleted": deleted}
 
 
@@ -169,4 +213,11 @@ async def delete_approver_block(email: str, technical_block: str, request: Reque
     deleted = delete_approver_mapping(normalized, technical_block)
     if deleted == 0:
         raise HTTPException(status_code=404, detail="Approver mapping not found")
+    log_activity(
+        request,
+        "delete_approver",
+        entity_type="approver",
+        entity_id=normalized,
+        values={"before": {"email": normalized, "technical_block": technical_block}, "deleted": deleted},
+    )
     return {"email": normalized, "technical_block": technical_block, "deleted": deleted}
