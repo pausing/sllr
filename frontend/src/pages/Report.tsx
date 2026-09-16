@@ -18,12 +18,12 @@ export function Report() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-text mb-6">View Report</h1>
+      <h1 className="text-2xl font-bold text-text mb-6 md:text-3xl">View Report</h1>
       
       <Card className="p-0 overflow-hidden">
         <iframe
           srcDoc={htmlContent}
-          className="w-full h-[800px] border-0"
+          className="w-full h-[70vh] border-0 md:h-[800px]"
           title="Lessons Learned Report"
         />
       </Card>

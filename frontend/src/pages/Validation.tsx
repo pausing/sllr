@@ -17,10 +17,10 @@ export function Validation() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-text mb-6">Validation</h1>
+      <h1 className="text-2xl font-bold text-text mb-6 md:text-3xl">Validation</h1>
       
       <Card>
-        <pre className="font-mono text-sm text-text whitespace-pre-wrap">{report}</pre>
+        <pre className="overflow-x-auto font-mono text-sm text-text whitespace-pre-wrap break-words">{report}</pre>
       </Card>
     </div>
   )

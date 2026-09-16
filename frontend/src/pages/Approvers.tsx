@@ -122,7 +122,7 @@ export function Approvers() {
   if (!isAdmin) {
     return (
       <div>
-        <h1 className="text-3xl font-bold text-text mb-2">Approvers</h1>
+        <h1 className="text-2xl font-bold text-text mb-2 md:text-3xl">Approvers</h1>
         <p className="text-muted">Portal admin required to assign Technical Block approvers.</p>
       </div>
     )
@@ -146,7 +146,7 @@ export function Approvers() {
   return (
     <div className="max-w-4xl">
       <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-accent">Administration</p>
-      <h1 className="mb-2 text-3xl font-bold text-text">Approvers</h1>
+      <h1 className="mb-2 text-2xl font-bold text-text md:text-3xl">Approvers</h1>
       <p className="mb-8 max-w-2xl text-muted">
         Assign one primary approver for each Technical Block. The selected person may set lessons
         in that block from Draft to Approved. Choose from people who already have SLLR access.
@@ -164,7 +164,7 @@ export function Approvers() {
         <div className="flex flex-col gap-4">
           {portalOptions.length > 0 ? (
             <div className="flex flex-wrap items-end gap-3">
-              <div className="min-w-64 flex-1">
+              <div className="min-w-0 w-full flex-1 sm:min-w-64">
                 <label className="mb-1 block text-sm font-medium text-text" htmlFor="portal-user">
                   People with SLLR access
                 </label>
@@ -187,7 +187,7 @@ export function Approvers() {
             </div>
           ) : null}
           <form onSubmit={handleAddTyped} className="flex flex-wrap items-end gap-3">
-            <div className="min-w-64 flex-1">
+            <div className="min-w-0 w-full flex-1 sm:min-w-64">
               <label className="mb-1 block text-sm font-medium text-text" htmlFor="approver-email">
                 {portalOptions.length > 0 ? 'Email not listed' : 'Portal email'}
               </label>
@@ -229,7 +229,7 @@ export function Approvers() {
               return (
                 <div
                   key={row.technical_block}
-                  className="rounded-lg border border-line border-l-4 border-l-accent bg-panel p-6"
+                  className="rounded-lg border border-line border-l-4 border-l-accent bg-panel p-4 md:p-6"
                 >
                   <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
                     <h3 className="font-mono text-lg font-medium text-accent">{row.technical_block}</h3>
@@ -281,7 +281,7 @@ export function Approvers() {
                   ) : null}
                   {alsoOptions.length > 0 && primary ? (
                     <div className="mt-4 flex flex-wrap items-end gap-3">
-                      <div className="min-w-64 flex-1">
+                      <div className="min-w-0 w-full flex-1 sm:min-w-64">
                         <label className="mb-1 block text-sm font-medium text-text">
                           Also approve
                         </label>

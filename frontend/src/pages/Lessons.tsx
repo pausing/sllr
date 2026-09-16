@@ -46,16 +46,16 @@ export function Lessons() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-text">Browse Lessons</h1>
-        <Link to="/lessons/new">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold text-text md:text-3xl">Browse Lessons</h1>
+        <Link to="/lessons/new" className="shrink-0">
           <Button variant="primary">Add New Lesson</Button>
         </Link>
       </div>
 
       <Card className="mb-6">
         <h3 className="text-lg font-medium text-text mb-4">Filters</h3>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Select
             options={[{ value: '', label: 'All Technical Blocks' }, ...refs.technical_blocks.map(v => ({ value: v, label: v }))]}
             value={filters.technical_block}
@@ -92,22 +92,22 @@ export function Lessons() {
         <div className="space-y-4">
           {lessons.map((lesson) => (
             <Card key={lesson['Lesson ID']} className="hover:border-accent transition-colors">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-2 flex flex-wrap items-center gap-3">
                     <span className="text-accent font-mono text-sm">{lesson['Lesson ID']}</span>
                     <StatusDot status={lesson.Status} />
                   </div>
                   <h3 className="text-lg font-medium text-text mb-2">{lesson.Title}</h3>
-                  <div className="flex gap-4 text-sm text-muted">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
                     <span>{lesson['Project Phase']}</span>
-                    <span>•</span>
+                    <span className="hidden sm:inline">•</span>
                     <span>{lesson.Category}</span>
-                    <span>•</span>
+                    <span className="hidden sm:inline">•</span>
                     <span>{lesson['Technical Block']}</span>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 sm:shrink-0">
                   <Link to={`/lessons/${lesson['Lesson ID']}`}>
                     <Button variant="ghost">Edit</Button>
                   </Link>

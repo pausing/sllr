@@ -39,13 +39,13 @@ export function Reports() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-text mb-6">Reports</h1>
+      <h1 className="text-2xl font-bold text-text mb-6 md:text-3xl">Reports</h1>
       
       <p className="text-muted mb-6">
         Generate and download validation, duplicates, KPI, and dashboard CSV reports.
       </p>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <Card>
           <h3 className="text-lg font-medium text-text mb-3">Validation Report</h3>
           <p className="text-sm text-muted mb-4">

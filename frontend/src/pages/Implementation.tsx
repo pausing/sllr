@@ -32,7 +32,7 @@ export function Implementation() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-text mb-6">Implementation Follow Up</h1>
+      <h1 className="text-2xl font-bold text-text mb-6 md:text-3xl">Implementation Follow Up</h1>
       
       <p className="text-muted mb-6">
         Track implementation of recommendations for <strong>Approved</strong> lessons.
@@ -47,7 +47,7 @@ export function Implementation() {
         <Card>
           <h3 className="text-lg font-medium text-text mb-4">Approved Lessons</h3>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[40rem] text-sm">
               <thead>
                 <tr className="border-b border-line text-left">
                   <th className="py-3 px-4 font-medium text-muted">Lesson ID</th>

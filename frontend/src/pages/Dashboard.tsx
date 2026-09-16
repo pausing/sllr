@@ -18,10 +18,10 @@ export function Dashboard() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-text mb-6">Dashboard</h1>
+      <h1 className="text-2xl font-bold text-text mb-6 md:text-3xl">Dashboard</h1>
       
       {/* KPI Cards */}
-      <div className="grid grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-1 gap-4 mb-8 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
           <div className="text-2xl font-bold text-text">{kpis.total_lessons}</div>
           <div className="text-sm text-muted mt-1">Total Lessons</div>
@@ -49,7 +49,7 @@ export function Dashboard() {
       {/* Charts */}
       <div className="grid grid-cols-1 gap-8">
         <BarChart title="By Status" data={kpis.by_status} />
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           <BarChart title="By Category" data={kpis.by_category} />
           <BarChart title="By Technical Block" data={kpis.by_technical_block} />
           <BarChart title="By Implementation Status" data={kpis.by_implementation_status} />
@@ -78,9 +78,9 @@ function BarChart({ title, data }: { title: string; data: Record<string, number>
       <div className="space-y-3">
         {entries.map(([label, value]) => (
           <div key={label}>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-text">{label}</span>
-              <span className="text-muted">{value}</span>
+            <div className="flex justify-between gap-3 text-sm mb-1">
+              <span className="min-w-0 truncate text-text">{label}</span>
+              <span className="shrink-0 text-muted">{value}</span>
             </div>
             <div className="w-full h-2 bg-raised rounded">
               <div
