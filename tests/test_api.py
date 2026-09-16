@@ -253,10 +253,14 @@ def test_patch_lesson_status():
     create_response = client.post("/sllr/api/lessons", json=lesson_data)
     assert create_response.status_code == 201
     
-    # Patch status to Approved
+    # Patch status to Approved — requires admin (or a matching approver mapping)
     patch_response = client.patch(
         f"/sllr/api/lessons/{next_id}",
-        json={"Status": "Approved"}
+        json={"Status": "Approved"},
+        headers={
+            "X-Powerlearn-Email": "admin@powerlearn.us",
+            "X-Powerlearn-Admin": "true",
+        },
     )
     assert patch_response.status_code == 200
     patched = patch_response.json()

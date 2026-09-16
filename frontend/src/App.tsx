@@ -5,6 +5,7 @@ import { Lessons } from './pages/Lessons'
 import { LessonNew } from './pages/LessonNew'
 import { LessonEdit } from './pages/LessonEdit'
 import { Approve } from './pages/Approve'
+import { Approvers } from './pages/Approvers'
 import { Implementation } from './pages/Implementation'
 import { Validation } from './pages/Validation'
 import { Duplicates } from './pages/Duplicates'
@@ -21,6 +22,7 @@ function App() {
         <Route path="lessons/new" element={<LessonNew />} />
         <Route path="lessons/:id" element={<LessonEdit />} />
         <Route path="approve" element={<Approve />} />
+        <Route path="approvers" element={<Approvers />} />
         <Route path="implementation" element={<Implementation />} />
         <Route path="validation" element={<Validation />} />
         <Route path="duplicates" element={<Duplicates />} />

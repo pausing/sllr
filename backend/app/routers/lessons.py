@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from backend.app.approval import enforce_approval_if_needed
 from backend.app.storage import (
     find_lesson_by_id,
     insert_lesson,
@@ -230,7 +231,8 @@ async def update_lesson(lesson_id: str, lesson: LessonUpdate, request: Request):
     errors = validate_lesson(updated, refs)
     if errors:
         raise HTTPException(status_code=422, detail={"errors": errors})
-    
+
+    enforce_approval_if_needed(request, existing, updated)
     update_lesson_row(lesson_id, updated)
     return updated
 
@@ -286,6 +288,7 @@ async def patch_lesson(lesson_id: str, patch: LessonPatch, request: Request):
     errors = validate_lesson(patched, refs)
     if errors:
         raise HTTPException(status_code=422, detail={"errors": errors})
-    
+
+    enforce_approval_if_needed(request, existing, patched)
     update_lesson_row(lesson_id, patched)
     return patched

@@ -5,7 +5,7 @@ when the client omits it.
 """
 from typing import Any, Optional
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 
 HEADER_USER_ID = "X-Powerlearn-User-Id"
 HEADER_EMAIL = "X-Powerlearn-Email"
@@ -33,6 +33,24 @@ def portal_identity(request: Request) -> dict[str, Any]:
         "email": _header(request, HEADER_EMAIL),
         "admin": admin,
     }
+
+
+def normalize_email(email: Optional[str]) -> str:
+    return (email or "").strip().lower()
+
+
+def is_portal_admin(request: Request) -> bool:
+    return portal_identity(request)["admin"] is True
+
+
+def require_portal_admin(request: Request) -> dict[str, Any]:
+    ident = portal_identity(request)
+    if ident["admin"] is not True:
+        raise HTTPException(
+            status_code=403,
+            detail="Portal admin required to manage approvers.",
+        )
+    return ident
 
 
 def resolve_owner(

@@ -36,6 +36,14 @@ CREATE TABLE IF NOT EXISTS meta (
 )
 """
 
+_CREATE_APPROVERS = """
+CREATE TABLE IF NOT EXISTS approvers (
+  email TEXT NOT NULL,
+  technical_block TEXT NOT NULL,
+  PRIMARY KEY (email, technical_block)
+)
+"""
+
 
 def _quoted_columns() -> str:
     return ", ".join(f'"{c}"' for c in LESSON_COLUMNS)
@@ -96,12 +104,12 @@ def init_store() -> Path:
     with _lock:
         db_path.parent.mkdir(parents=True, exist_ok=True)
         key = str(db_path.resolve())
-        if key in _initialized_paths and db_path.exists():
-            return db_path
+        already = key in _initialized_paths and db_path.exists()
         with _connect(db_path) as conn:
             conn.execute(_CREATE_LESSONS)
             conn.execute(_CREATE_META)
-            if _meta_get(conn, "csv_migrated") != "1":
+            conn.execute(_CREATE_APPROVERS)
+            if not already and _meta_get(conn, "csv_migrated") != "1":
                 csv_path = get_lessons_csv_path()
                 existing = conn.execute("SELECT COUNT(*) AS n FROM lessons").fetchone()["n"]
                 leftover = _read_csv_rows(csv_path)
@@ -222,3 +230,112 @@ def import_lessons_csv_path(path: Path | None = None) -> int:
 
 def get_data_dir() -> Path:
     return get_live_data_dir()
+
+
+def _normalize_email(email: str) -> str:
+    return (email or "").strip().lower()
+
+
+def list_approver_rows() -> list[dict[str, str]]:
+    """Return all approver mappings, sorted by email then technical block."""
+    init_store()
+    with _lock, _connect() as conn:
+        cur = conn.execute(
+            "SELECT email, technical_block FROM approvers ORDER BY email, technical_block"
+        )
+        return [
+            {"email": row["email"], "technical_block": row["technical_block"]}
+            for row in cur.fetchall()
+        ]
+
+
+def list_approvers_grouped() -> list[dict[str, Any]]:
+    grouped: dict[str, list[str]] = {}
+    for row in list_approver_rows():
+        grouped.setdefault(row["email"], []).append(row["technical_block"])
+    return [{"email": email, "technical_blocks": blocks} for email, blocks in grouped.items()]
+
+
+def get_approver_blocks(email: str) -> list[str]:
+    normalized = _normalize_email(email)
+    if not normalized:
+        return []
+    init_store()
+    with _lock, _connect() as conn:
+        cur = conn.execute(
+            "SELECT technical_block FROM approvers WHERE email = ? ORDER BY technical_block",
+            (normalized,),
+        )
+        return [row["technical_block"] for row in cur.fetchall()]
+
+
+def has_approver_mapping(email: str, technical_block: str) -> bool:
+    normalized = _normalize_email(email)
+    block = (technical_block or "").strip()
+    if not normalized or not block:
+        return False
+    init_store()
+    with _lock, _connect() as conn:
+        cur = conn.execute(
+            "SELECT 1 FROM approvers WHERE email = ? AND technical_block = ? LIMIT 1",
+            (normalized, block),
+        )
+        return cur.fetchone() is not None
+
+
+def set_approver_blocks(email: str, technical_blocks: list[str]) -> list[str]:
+    """Replace all technical blocks for an email. Returns the stored blocks."""
+    normalized = _normalize_email(email)
+    if not normalized:
+        raise ValueError("email is required")
+    unique_blocks: list[str] = []
+    seen: set[str] = set()
+    for raw in technical_blocks:
+        block = (raw or "").strip()
+        if not block or block in seen:
+            continue
+        seen.add(block)
+        unique_blocks.append(block)
+    init_store()
+    with _lock, _connect() as conn:
+        conn.execute("DELETE FROM approvers WHERE email = ?", (normalized,))
+        conn.executemany(
+            "INSERT INTO approvers (email, technical_block) VALUES (?, ?)",
+            [(normalized, block) for block in unique_blocks],
+        )
+        conn.commit()
+    return unique_blocks
+
+
+def add_approver_mapping(email: str, technical_block: str) -> None:
+    normalized = _normalize_email(email)
+    block = (technical_block or "").strip()
+    if not normalized:
+        raise ValueError("email is required")
+    if not block:
+        raise ValueError("technical_block is required")
+    init_store()
+    with _lock, _connect() as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO approvers (email, technical_block) VALUES (?, ?)",
+            (normalized, block),
+        )
+        conn.commit()
+
+
+def delete_approver_mapping(email: str, technical_block: Optional[str] = None) -> int:
+    """Delete one mapping, or all mappings for an email. Returns rows deleted."""
+    normalized = _normalize_email(email)
+    if not normalized:
+        return 0
+    init_store()
+    with _lock, _connect() as conn:
+        if technical_block is None:
+            cur = conn.execute("DELETE FROM approvers WHERE email = ?", (normalized,))
+        else:
+            cur = conn.execute(
+                "DELETE FROM approvers WHERE email = ? AND technical_block = ?",
+                (normalized, technical_block.strip()),
+            )
+        conn.commit()
+        return int(cur.rowcount or 0)
