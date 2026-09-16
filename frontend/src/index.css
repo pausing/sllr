@@ -51,3 +51,25 @@ textarea {
 ::selection {
   background: #3dcc8c44;
 }
+
+@media print {
+  header,
+  aside {
+    display: none !important;
+  }
+
+  main {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .report-gallery {
+    color: var(--color-text);
+  }
+
+  .report-gallery .print\:break-inside-avoid,
+  .report-gallery [class*="break-inside-avoid"] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
