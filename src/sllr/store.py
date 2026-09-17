@@ -7,8 +7,10 @@ list/create/update/patch and ``compute_kpis`` all read this same file.
 from __future__ import annotations
 
 import csv
+import json
 import sqlite3
 import threading
+from datetime import datetime, timezone
 from io import StringIO
 from pathlib import Path
 from typing import Any, Optional
@@ -55,6 +57,24 @@ CREATE TABLE IF NOT EXISTS vocab (
   active INTEGER NOT NULL DEFAULT 1,
   PRIMARY KEY (kind, code)
 )
+"""
+
+_CREATE_ACTIVITY = """
+CREATE TABLE IF NOT EXISTS activity_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at TEXT NOT NULL,
+  user_id TEXT,
+  email TEXT,
+  action TEXT NOT NULL,
+  entity_type TEXT,
+  entity_id TEXT,
+  values_json TEXT
+)
+"""
+
+_CREATE_ACTIVITY_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_activity_log_created_at
+ON activity_log (created_at DESC, id DESC)
 """
 
 EDITABLE_VOCAB_KINDS = ("categories", "technical_blocks", "phases")
@@ -131,6 +151,8 @@ def init_store() -> Path:
             conn.execute(_CREATE_META)
             conn.execute(_CREATE_APPROVERS)
             conn.execute(_CREATE_VOCAB)
+            conn.execute(_CREATE_ACTIVITY)
+            conn.execute(_CREATE_ACTIVITY_INDEX)
             _seed_vocab_if_empty(conn)
             if not already and _meta_get(conn, "csv_migrated") != "1":
                 csv_path = get_lessons_csv_path()
@@ -631,3 +653,105 @@ def reorder_vocab(kind: str, codes: list[str]) -> list[dict[str, Any]]:
             )
         conn.commit()
     return list_vocab(key)
+
+
+def insert_activity_log(
+    *,
+    user_id: str = "",
+    email: str = "",
+    action: str,
+    entity_type: str = "",
+    entity_id: str = "",
+    values: Any = None,
+    created_at: str | None = None,
+) -> int:
+    """Append one activity row. Never raises on JSON encode of typical payloads."""
+    init_store()
+    ts = created_at or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    payload = ""
+    if values is not None:
+        payload = json.dumps(values, default=str, ensure_ascii=False)
+    with _lock, _connect() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO activity_log
+              (created_at, user_id, email, action, entity_type, entity_id, values_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                ts,
+                user_id or "",
+                email or "",
+                action,
+                entity_type or "",
+                entity_id or "",
+                payload,
+            ),
+        )
+        conn.commit()
+        return int(cur.lastrowid or 0)
+
+
+def list_activity_log(
+    *,
+    limit: int = 50,
+    offset: int = 0,
+    email: str | None = None,
+    action: str | None = None,
+    entity_id: str | None = None,
+    since: str | None = None,
+) -> tuple[list[dict[str, Any]], int]:
+    """Newest first. Returns (items, total matching filters)."""
+    init_store()
+    limit = max(1, min(int(limit), 200))
+    offset = max(0, int(offset))
+    where: list[str] = []
+    params: list[Any] = []
+    if email and email.strip():
+        where.append("LOWER(email) = ?")
+        params.append(email.strip().lower())
+    if action and action.strip():
+        where.append("action = ?")
+        params.append(action.strip())
+    if entity_id and entity_id.strip():
+        where.append("entity_id = ?")
+        params.append(entity_id.strip())
+    if since and since.strip():
+        where.append("created_at >= ?")
+        params.append(since.strip())
+    clause = f"WHERE {' AND '.join(where)}" if where else ""
+    with _lock, _connect() as conn:
+        total = conn.execute(
+            f"SELECT COUNT(*) AS n FROM activity_log {clause}",
+            params,
+        ).fetchone()["n"]
+        rows = conn.execute(
+            f"""
+            SELECT id, created_at, user_id, email, action, entity_type, entity_id, values_json
+            FROM activity_log
+            {clause}
+            ORDER BY id DESC
+            LIMIT ? OFFSET ?
+            """,
+            [*params, limit, offset],
+        ).fetchall()
+    items: list[dict[str, Any]] = []
+    for row in rows:
+        raw = row["values_json"] or ""
+        try:
+            parsed = json.loads(raw) if raw else None
+        except json.JSONDecodeError:
+            parsed = raw
+        items.append(
+            {
+                "id": int(row["id"]),
+                "created_at": row["created_at"] or "",
+                "user_id": row["user_id"] or "",
+                "email": row["email"] or "",
+                "action": row["action"] or "",
+                "entity_type": row["entity_type"] or "",
+                "entity_id": row["entity_id"] or "",
+                "values": parsed,
+            }
+        )
+    return items, int(total)

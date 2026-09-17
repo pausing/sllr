@@ -72,6 +72,24 @@ export interface SllrUser {
   name?: string | null
 }
 
+export interface ActivityEntry {
+  id: number
+  created_at: string
+  user_id: string
+  email: string
+  action: string
+  entity_type: string
+  entity_id: string
+  values: unknown
+}
+
+export interface ActivityPage {
+  items: ActivityEntry[]
+  total: number
+  limit: number
+  offset: number
+}
+
 export interface KPIs {
   total_lessons: number
   repeated_issues_count: number
@@ -361,6 +379,37 @@ export const api = {
       { method: 'DELETE' },
     )
     if (!res.ok) throw new Error(await readApiError(res, 'Failed to delete code'))
+  },
+
+  async getActivity(filters?: {
+    limit?: number
+    offset?: number
+    email?: string
+    action?: string
+    entity_id?: string
+    since?: string
+  }): Promise<ActivityPage> {
+    const params = new URLSearchParams()
+    if (filters) {
+      if (filters.limit != null) params.set('limit', String(filters.limit))
+      if (filters.offset != null) params.set('offset', String(filters.offset))
+      if (filters.email) params.set('email', filters.email)
+      if (filters.action) params.set('action', filters.action)
+      if (filters.entity_id) params.set('entity_id', filters.entity_id)
+      if (filters.since) {
+        const parsed = new Date(filters.since)
+        params.set('since', Number.isNaN(parsed.getTime()) ? filters.since : parsed.toISOString())
+      }
+    }
+    const res = await fetch(`${API_BASE}/activity?${params}`)
+    if (!res.ok) throw new Error(await readApiError(res, 'Failed to fetch activity'))
+    const data = await res.json()
+    return {
+      items: Array.isArray(data?.items) ? data.items : [],
+      total: typeof data?.total === 'number' ? data.total : 0,
+      limit: typeof data?.limit === 'number' ? data.limit : filters?.limit ?? 50,
+      offset: typeof data?.offset === 'number' ? data.offset : filters?.offset ?? 0,
+    }
   },
 
   async reorderVocab(kind: VocabKind, codes: string[]): Promise<VocabItem[]> {

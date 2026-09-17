@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from backend.app.activity import changed_values, lesson_write_action, log_activity
 from backend.app.approval import enforce_approval_if_needed
 from backend.app.storage import (
     find_lesson_by_id,
@@ -186,6 +187,13 @@ async def create_lesson(lesson: LessonCreate, request: Request):
         raise HTTPException(status_code=422, detail={"errors": errors})
     
     insert_lesson(row)
+    log_activity(
+        request,
+        "create_lesson",
+        entity_type="lesson",
+        entity_id=row["Lesson ID"],
+        values={"after": row},
+    )
     return row
 
 
@@ -245,6 +253,14 @@ async def update_lesson(lesson_id: str, lesson: LessonUpdate, request: Request):
 
     enforce_approval_if_needed(request, existing, updated)
     update_lesson_row(lesson_id, updated)
+    action = lesson_write_action("update_lesson", existing, updated)
+    log_activity(
+        request,
+        action,
+        entity_type="lesson",
+        entity_id=lesson_id,
+        values={"before": existing, "after": updated, "changed": changed_values(existing, updated)},
+    )
     return updated
 
 
@@ -305,4 +321,12 @@ async def patch_lesson(lesson_id: str, patch: LessonPatch, request: Request):
 
     enforce_approval_if_needed(request, existing, patched)
     update_lesson_row(lesson_id, patched)
+    action = lesson_write_action("patch_lesson", existing, patched)
+    log_activity(
+        request,
+        action,
+        entity_type="lesson",
+        entity_id=lesson_id,
+        values={"before": existing, "after": patched, "changed": changed_values(existing, patched)},
+    )
     return patched
