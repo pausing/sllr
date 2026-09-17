@@ -16,6 +16,7 @@ from starlette.types import Scope
 
 from backend.app.routers import (
     activity,
+    approvals,
     lessons,
     references,
     kpis,
@@ -178,6 +179,7 @@ def create_app() -> FastAPI:
         app.include_router(reports.router, prefix=prefix, tags=["reports"])
         app.include_router(export_router.router, prefix=prefix, tags=["export"])
         app.include_router(me.router, prefix=prefix, tags=["me"])
+        app.include_router(approvals.router, prefix=prefix, tags=["approvals"])
         app.include_router(approvers.router, prefix=prefix, tags=["approvers"])
         app.include_router(settings.router, prefix=prefix, tags=["settings"])
         app.include_router(activity.router, prefix=prefix, tags=["activity"])

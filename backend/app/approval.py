@@ -33,6 +33,26 @@ def can_approve_lesson(
     return has_approver_mapping(email or "", GENERAL_TECHNICAL_BLOCK)
 
 
+def pending_draft_count(
+    lessons: Iterable[dict[str, Any]],
+    *,
+    is_admin: bool,
+    email: Optional[str],
+) -> int:
+    """How many Draft lessons the current identity may approve."""
+    count = 0
+    for lesson in lessons:
+        if lesson.get("Status") != "Draft":
+            continue
+        if can_approve_lesson(
+            is_admin=is_admin,
+            email=email,
+            technical_block=lesson.get("Technical Block") or "",
+        ):
+            count += 1
+    return count
+
+
 def visible_lessons_for_approve(
     lessons: Iterable[dict[str, Any]],
     *,
