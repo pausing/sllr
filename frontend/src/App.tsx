@@ -9,11 +9,7 @@ import { Approvers } from './pages/Approvers'
 import { Settings } from './pages/Settings'
 import { Activity } from './pages/Activity'
 import { Implementation } from './pages/Implementation'
-import { Validation } from './pages/Validation'
-import { Duplicates } from './pages/Duplicates'
 import { Report } from './pages/Report'
-import { Export } from './pages/Export'
-import { Reports } from './pages/Reports'
 
 function App() {
   return (
@@ -28,11 +24,7 @@ function App() {
         <Route path="settings" element={<Settings />} />
         <Route path="activity" element={<Activity />} />
         <Route path="implementation" element={<Implementation />} />
-        <Route path="validation" element={<Validation />} />
-        <Route path="duplicates" element={<Duplicates />} />
         <Route path="report" element={<Report />} />
-        <Route path="export" element={<Export />} />
-        <Route path="reports" element={<Reports />} />
       </Route>
     </Routes>
   )

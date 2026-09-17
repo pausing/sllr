@@ -13,9 +13,9 @@ Connect Power BI to the SLLR CSV repository or to the SharePoint List for dashbo
 
 | KPI / Visual | Purpose |
 |--------------|--------|
-| Repeated Issues | Count of (Technical Block × Category × Root Cause) with more than one lesson |
+| Repeated Issues | Count of (Technical Block × Root Cause) with more than one lesson |
 | Capture-to-Approval Time | Average days from Created Date to Modified Date for Status = Approved |
-| Category / Technical Block | Lessons by Category or Technical Block (and optionally Project Phase) |
+| Technical Block | Lessons by Technical Block (and optionally Project Phase) |
 | Status funnel | Draft → Approved |
 | Top Root Causes | Table or bar chart of recurring Root Cause values |
 

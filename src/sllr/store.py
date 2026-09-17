@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import Any, Optional
 
 from .config import (
+    GENERAL_TECHNICAL_BLOCK,
+    LEGACY_LESSON_ALIASES,
     LESSON_COLUMNS,
     REF_CODE_COLUMN,
     REFERENCE_FILES,
@@ -77,10 +79,9 @@ CREATE INDEX IF NOT EXISTS idx_activity_log_created_at
 ON activity_log (created_at DESC, id DESC)
 """
 
-EDITABLE_VOCAB_KINDS = ("categories", "technical_blocks", "phases")
+EDITABLE_VOCAB_KINDS = ("technical_blocks", "phases")
 
 _LESSON_FIELD_BY_KIND = {
-    "categories": "Category",
     "technical_blocks": "Technical Block",
     "phases": "Project Phase",
 }
@@ -101,11 +102,29 @@ def _connect(db_path: Path | None = None) -> sqlite3.Connection:
 
 
 def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
-    return {col: (row[col] if row[col] is not None else "") for col in LESSON_COLUMNS}
+    keys = set(row.keys())
+    raw = {col: (row[col] if col in keys and row[col] is not None else "") for col in LESSON_COLUMNS}
+    return _normalize_row(raw)
+
+
+def _apply_legacy_aliases(row: dict[str, Any]) -> dict[str, Any]:
+    """Map leftover CSV/SQLite names; ignore Category and Sub-category."""
+    out = dict(row)
+    for old, new in LEGACY_LESSON_ALIASES.items():
+        if new not in LESSON_COLUMNS:
+            continue
+        current = (out.get(new) or "").strip() if out.get(new) is not None else ""
+        if current:
+            continue
+        legacy = out.get(old)
+        if legacy is not None and str(legacy).strip():
+            out[new] = legacy
+    return out
 
 
 def _normalize_row(row: dict[str, Any]) -> dict[str, Any]:
-    return {col: "" if row.get(col) is None else str(row.get(col, "")) for col in LESSON_COLUMNS}
+    mapped = _apply_legacy_aliases(row)
+    return {col: "" if mapped.get(col) is None else str(mapped.get(col, "")) for col in LESSON_COLUMNS}
 
 
 def _read_csv_rows(path: Path) -> list[dict[str, Any]]:
@@ -130,6 +149,39 @@ def _meta_set(conn: sqlite3.Connection, key: str, value: str) -> None:
     )
 
 
+def _existing_columns(conn: sqlite3.Connection) -> set[str]:
+    return {row[1] for row in conn.execute("PRAGMA table_info(lessons)").fetchall()}
+
+
+def _migrate_lessons_table(conn: sqlite3.Connection) -> None:
+    """Add new schema columns and copy legacy What Happened / due-date values."""
+    existing = _existing_columns(conn)
+    if not existing:
+        return
+    for col in LESSON_COLUMNS:
+        if col not in existing:
+            conn.execute(f'ALTER TABLE lessons ADD COLUMN "{col}" TEXT')
+            existing.add(col)
+    if "Event Description" in existing and "What Happened" in existing:
+        conn.execute(
+            """
+            UPDATE lessons
+            SET "Event Description" = "What Happened"
+            WHERE IFNULL("Event Description", '') = ''
+              AND IFNULL("What Happened", '') != ''
+            """
+        )
+    if "Implementation Due Date" in existing and "Recommendation Due Date" in existing:
+        conn.execute(
+            """
+            UPDATE lessons
+            SET "Implementation Due Date" = "Recommendation Due Date"
+            WHERE IFNULL("Implementation Due Date", '') = ''
+              AND IFNULL("Recommendation Due Date", '') != ''
+            """
+        )
+
+
 def _insert_rows(conn: sqlite3.Connection, rows: list[dict[str, Any]]) -> None:
     if not rows:
         return
@@ -148,6 +200,7 @@ def init_store() -> Path:
         already = key in _initialized_paths and db_path.exists()
         with _connect(db_path) as conn:
             conn.execute(_CREATE_LESSONS)
+            _migrate_lessons_table(conn)
             conn.execute(_CREATE_META)
             conn.execute(_CREATE_APPROVERS)
             conn.execute(_CREATE_VOCAB)
@@ -328,6 +381,45 @@ def has_approver_mapping(email: str, technical_block: str) -> bool:
         return cur.fetchone() is not None
 
 
+def block_has_specific_approvers(technical_block: str) -> bool:
+    """True when the Technical Block has at least one mapping (General does not count)."""
+    block = (technical_block or "").strip()
+    if not block or block == GENERAL_TECHNICAL_BLOCK:
+        return False
+    init_store()
+    with _lock, _connect() as conn:
+        cur = conn.execute(
+            "SELECT 1 FROM approvers WHERE technical_block = ? LIMIT 1",
+            (block,),
+        )
+        return cur.fetchone() is not None
+
+
+def empty_technical_blocks() -> list[str]:
+    """Technical Blocks that have no specific approver mappings (General fallback applies)."""
+    blocks = load_live_reference_codes().get("technical_blocks") or []
+    return [block for block in blocks if not block_has_specific_approvers(block)]
+
+
+def effective_approver_blocks(email: str) -> list[str]:
+    """Blocks this email may approve, expanding General to currently unmapped areas."""
+    mapped = get_approver_blocks(email)
+    out: list[str] = []
+    seen: set[str] = set()
+    for block in mapped:
+        if block == GENERAL_TECHNICAL_BLOCK:
+            continue
+        if block not in seen:
+            seen.add(block)
+            out.append(block)
+    if GENERAL_TECHNICAL_BLOCK in mapped:
+        for block in empty_technical_blocks():
+            if block not in seen:
+                seen.add(block)
+                out.append(block)
+    return out
+
+
 def set_approver_blocks(email: str, technical_blocks: list[str]) -> list[str]:
     """Replace all technical blocks for an email. Returns the stored blocks."""
     normalized = _normalize_email(email)
@@ -376,6 +468,13 @@ def list_approvers_by_block() -> list[dict[str, Any]]:
     blocks = load_live_reference_codes().get("technical_blocks") or []
     ordered: list[dict[str, Any]] = []
     seen: set[str] = set()
+    ordered.append(
+        {
+            "technical_block": GENERAL_TECHNICAL_BLOCK,
+            "emails": grouped.get(GENERAL_TECHNICAL_BLOCK, []),
+        }
+    )
+    seen.add(GENERAL_TECHNICAL_BLOCK)
     for block in blocks:
         seen.add(block)
         ordered.append({"technical_block": block, "emails": grouped.get(block, [])})
@@ -467,7 +566,7 @@ def _assert_vocab_kind(kind: str) -> str:
 
 
 def load_live_reference_codes() -> dict[str, list[str]]:
-    """Active codes for categories, technical blocks, and phases (form/validation)."""
+    """Active codes for technical blocks and phases (form/validation)."""
     init_store()
     out: dict[str, list[str]] = {kind: [] for kind in EDITABLE_VOCAB_KINDS}
     with _lock, _connect() as conn:

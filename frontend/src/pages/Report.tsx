@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { api, Lesson, References } from '../lib/api'
+import { lessonMatchesQuery } from '../lib/lessonSearch'
 import { Button, Card, Select, StatusDot, TextInput } from '../components/ui'
 
 function parseDate(value?: string): number {
@@ -28,9 +29,9 @@ export function Report() {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
   const [technicalBlock, setTechnicalBlock] = useState('')
-  const [category, setCategory] = useState('')
   const [phase, setPhase] = useState('')
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [downloading, setDownloading] = useState<'html' | 'pdf' | null>(null)
 
   const load = () => {
     setLoading(true)
@@ -51,39 +52,46 @@ export function Report() {
   }, [])
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
     return lessons
       .filter((lesson) => {
         if (status && lesson.Status !== status) return false
         if (technicalBlock && lesson['Technical Block'] !== technicalBlock) return false
-        if (category && lesson.Category !== category) return false
         if (phase && lesson['Project Phase'] !== phase) return false
-        if (q) {
-          const id = (lesson['Lesson ID'] ?? '').toLowerCase()
-          const title = (lesson.Title ?? '').toLowerCase()
-          if (!id.includes(q) && !title.includes(q)) return false
-        }
-        return true
+        return lessonMatchesQuery(lesson, search)
       })
       .sort((a, b) => {
         const byModified = parseDate(b['Modified Date']) - parseDate(a['Modified Date'])
         if (byModified !== 0) return byModified
         return parseDate(b['Created Date']) - parseDate(a['Created Date'])
       })
-  }, [lessons, search, status, technicalBlock, category, phase])
+  }, [lessons, search, status, technicalBlock, phase])
 
   const toggleExpanded = (id: string) => {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
-  const hasActiveFilters = Boolean(search || status || technicalBlock || category || phase)
+  const hasActiveFilters = Boolean(search || status || technicalBlock || phase)
 
   const clearFilters = () => {
     setSearch('')
     setStatus('')
     setTechnicalBlock('')
-    setCategory('')
     setPhase('')
+  }
+
+  const downloadFiltered = async (kind: 'html' | 'pdf') => {
+    const ids = filtered.map((lesson) => lesson['Lesson ID']).filter(Boolean)
+    if (ids.length === 0) return
+    setDownloading(kind)
+    setError('')
+    try {
+      if (kind === 'html') await api.downloadHTML(ids)
+      else await api.downloadPDF(ids)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to download')
+    } finally {
+      setDownloading(null)
+    }
   }
 
   return (
@@ -103,19 +111,35 @@ export function Report() {
               id="report-search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Title or Lesson ID"
+              placeholder="Search all lesson fields"
               className="w-full"
             />
           </div>
-          {hasActiveFilters ? (
-            <Button variant="ghost" onClick={clearFilters} className="shrink-0">
-              Clear filters
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="primary"
+              disabled={filtered.length === 0 || downloading !== null}
+              onClick={() => void downloadFiltered('html')}
+            >
+              {downloading === 'html' ? 'Downloading…' : 'Download HTML'}
             </Button>
-          ) : null}
+            <Button
+              variant="default"
+              disabled={filtered.length === 0 || downloading !== null}
+              onClick={() => void downloadFiltered('pdf')}
+            >
+              {downloading === 'pdf' ? 'Downloading…' : 'Download PDF'}
+            </Button>
+            {hasActiveFilters ? (
+              <Button variant="ghost" onClick={clearFilters} className="shrink-0">
+                Clear filters
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         {refs ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Select
               aria-label="Status"
               options={[{ value: '', label: 'All Statuses' }, ...refs.statuses.map((v) => ({ value: v, label: v }))]}
@@ -130,12 +154,6 @@ export function Report() {
               ]}
               value={technicalBlock}
               onChange={(e) => setTechnicalBlock(e.target.value)}
-            />
-            <Select
-              aria-label="Category"
-              options={[{ value: '', label: 'All Categories' }, ...refs.categories.map((v) => ({ value: v, label: v }))]}
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
             />
             <Select
               aria-label="Phase"
@@ -194,11 +212,17 @@ export function Report() {
                 <h3 className="mb-3 text-lg font-medium text-text">{lesson.Title || 'Untitled'}</h3>
                 <dl className="mb-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                   <Meta label="Technical Block" value={lesson['Technical Block']} />
-                  <Meta label="Category" value={lesson.Category} />
                   <Meta label="Phase" value={lesson['Project Phase']} />
                   <Meta label="Owner" value={lesson.Owner} />
+                  <Meta label="Implementation Owner" value={lesson['Implementation Owner']} />
                 </dl>
                 <div className="space-y-3 text-sm">
+                  <p>
+                    <span className="font-medium text-text">Event Description</span>
+                    <span className="mt-1 block text-muted">
+                      {open ? (lesson['Event Description']?.trim() || '—') : preview(lesson['Event Description'])}
+                    </span>
+                  </p>
                   <p>
                     <span className="font-medium text-text">Lesson Learned</span>
                     <span className="mt-1 block text-muted">

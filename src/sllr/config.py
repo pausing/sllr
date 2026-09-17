@@ -40,9 +40,11 @@ def get_lessons_master_path() -> Path:
     return get_lessons_csv_path()
 
 
+# Special approver mapping used when a Technical Block has no assignees.
+GENERAL_TECHNICAL_BLOCK = "General"
+
 # Reference CSV files (controlled vocabularies)
 REFERENCE_FILES = {
-    "categories": DATA_DIR / "categories.csv",
     "technical_blocks": DATA_DIR / "technical_blocks.csv",
     "phases": DATA_DIR / "phases.csv",
     "statuses": DATA_DIR / "statuses.csv",
@@ -59,22 +61,28 @@ REF_CODE_COLUMN = "code"
 LESSON_SCHEMA = {
     "Lesson ID": {"required": True, "reference": None},
     "Title": {"required": True, "reference": None},
-    "Category": {"required": True, "reference": "categories"},
     "Technical Block": {"required": True, "reference": "technical_blocks"},
-    "Sub-category": {"required": True, "reference": None},
     "Project Phase": {"required": True, "reference": "phases"},
+    "Event Description": {"required": True, "reference": None},
     "Root Cause": {"required": True, "reference": None},
-    "What Happened": {"required": True, "reference": None},
     "Impact": {"required": True, "reference": None},
     "Lesson Learned": {"required": True, "reference": None},
     "Recommendation": {"required": True, "reference": None},
-    "Recommendation Due Date": {"required": False, "reference": None},
+    "Implementation Owner": {"required": False, "reference": None},
+    "Implementation Due Date": {"required": False, "reference": None},
     "Keywords": {"required": False, "reference": None},
     "Status": {"required": True, "reference": "statuses"},
     "Implementation Status": {"required": True, "reference": "implementation_statuses"},
     "Owner": {"required": True, "reference": None},
     "Created Date": {"required": False, "reference": None},
     "Modified Date": {"required": False, "reference": None},
+}
+
+# Legacy CSV / SQLite names mapped into LESSON_SCHEMA on read. Ignored if the
+# current field is already populated. Category / Sub-category are dropped.
+LEGACY_LESSON_ALIASES = {
+    "What Happened": "Event Description",
+    "Recommendation Due Date": "Implementation Due Date",
 }
 
 LESSON_COLUMNS = list(LESSON_SCHEMA.keys())

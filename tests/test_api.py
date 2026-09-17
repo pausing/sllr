@@ -10,6 +10,7 @@ os.environ["SLLR_DATA_DIR"] = "/tmp/sllr_test_data"
 os.environ["SLLR_BASE_PATH"] = "/sllr"
 
 from backend.app.main import app
+from tests.lesson_fixtures import APPROVE_ASSIGNMENT, lesson_body
 
 client = TestClient(app)
 
@@ -40,11 +41,11 @@ def test_get_references():
     response = client.get("/sllr/api/references")
     assert response.status_code == 200
     data = response.json()
-    assert "categories" in data
     assert "technical_blocks" in data
     assert "phases" in data
     assert "statuses" in data
     assert "implementation_statuses" in data
+    assert "categories" not in data
 
 
 def test_list_lessons():
@@ -124,20 +125,7 @@ def test_create_lesson():
     next_id = next_id_response.json()["suggested_id"]
     
     # Create lesson
-    lesson_data = {
-        "Lesson ID": next_id,
-        "Title": "Test Lesson",
-        "Category": "Engineering",
-        "Technical Block": "PV",
-        "Sub-category": "Modules",
-        "Project Phase": "Construction",
-        "Root Cause": "Test root cause",
-        "What Happened": "Test what happened",
-        "Impact": "Test impact",
-        "Lesson Learned": "Test lesson learned",
-        "Recommendation": "Test recommendation",
-        "Owner": "Test Owner",
-    }
+    lesson_data = lesson_body(next_id, Title="Test Lesson")
     
     response = client.post("/sllr/api/lessons", json=lesson_data)
     assert response.status_code == 201
@@ -150,19 +138,8 @@ def test_create_lesson():
 def test_create_lesson_owner_defaults_to_portal_email():
     """When the client omits Owner, stamp it from X-Powerlearn-Email."""
     next_id = client.get("/sllr/api/lessons/next-id").json()["suggested_id"]
-    lesson_data = {
-        "Lesson ID": next_id,
-        "Title": "Portal Owner Lesson",
-        "Category": "Engineering",
-        "Technical Block": "PV",
-        "Sub-category": "Modules",
-        "Project Phase": "Construction",
-        "Root Cause": "Test root cause",
-        "What Happened": "Test what happened",
-        "Impact": "Test impact",
-        "Lesson Learned": "Test lesson learned",
-        "Recommendation": "Test recommendation",
-    }
+    lesson_data = lesson_body(next_id, Title="Portal Owner Lesson")
+    lesson_data.pop("Owner")
     response = client.post(
         "/sllr/api/lessons",
         json=lesson_data,
@@ -182,20 +159,7 @@ def test_create_lesson_duplicate_id():
     next_id_response = client.get("/sllr/api/lessons/next-id")
     next_id = next_id_response.json()["suggested_id"]
     
-    lesson_data = {
-        "Lesson ID": next_id,
-        "Title": "Test Lesson Duplicate",
-        "Category": "Engineering",
-        "Technical Block": "PV",
-        "Sub-category": "Modules",
-        "Project Phase": "Construction",
-        "Root Cause": "Test root cause",
-        "What Happened": "Test what happened",
-        "Impact": "Test impact",
-        "Lesson Learned": "Test lesson learned",
-        "Recommendation": "Test recommendation",
-        "Owner": "Test Owner",
-    }
+    lesson_data = lesson_body(next_id, Title="Test Lesson Duplicate")
     
     response1 = client.post("/sllr/api/lessons", json=lesson_data)
     assert response1.status_code == 201
@@ -205,26 +169,13 @@ def test_create_lesson_duplicate_id():
     assert response2.status_code == 409  # Conflict
 
 
-def test_create_lesson_invalid_category():
-    """Test that invalid categories are rejected with /sllr prefix."""
+def test_create_lesson_invalid_technical_block():
+    """Test that invalid technical blocks are rejected with /sllr prefix."""
     next_id_response = client.get("/sllr/api/lessons/next-id")
     next_id = next_id_response.json()["suggested_id"]
-    
-    lesson_data = {
-        "Lesson ID": next_id,
-        "Title": "Test Lesson Invalid",
-        "Category": "INVALID_CATEGORY",  # Invalid
-        "Technical Block": "PV",
-        "Sub-category": "Modules",
-        "Project Phase": "Construction",
-        "Root Cause": "Test root cause",
-        "What Happened": "Test what happened",
-        "Impact": "Test impact",
-        "Lesson Learned": "Test lesson learned",
-        "Recommendation": "Test recommendation",
-        "Owner": "Test Owner",
-    }
-    
+
+    lesson_data = lesson_body(next_id, Title="Test Lesson Invalid", technical_block="INVALID_BLOCK")
+
     response = client.post("/sllr/api/lessons", json=lesson_data)
     assert response.status_code == 422  # Validation error
 
@@ -235,28 +186,16 @@ def test_patch_lesson_status():
     next_id_response = client.get("/sllr/api/lessons/next-id")
     next_id = next_id_response.json()["suggested_id"]
     
-    lesson_data = {
-        "Lesson ID": next_id,
-        "Title": "Test Lesson for Patch",
-        "Category": "Engineering",
-        "Technical Block": "PV",
-        "Sub-category": "Modules",
-        "Project Phase": "Construction",
-        "Root Cause": "Test root cause",
-        "What Happened": "Test what happened",
-        "Impact": "Test impact",
-        "Lesson Learned": "Test lesson learned",
-        "Recommendation": "Test recommendation",
-        "Owner": "Test Owner",
-    }
+    lesson_data = lesson_body(next_id, Title="Test Lesson for Patch")
     
     create_response = client.post("/sllr/api/lessons", json=lesson_data)
     assert create_response.status_code == 201
     
     # Patch status to Approved — requires admin (or a matching approver mapping)
+    # plus Implementation Owner and Implementation Due Date.
     patch_response = client.patch(
         f"/sllr/api/lessons/{next_id}",
-        json={"Status": "Approved"},
+        json={"Status": "Approved", **APPROVE_ASSIGNMENT},
         headers={
             "X-Powerlearn-Email": "admin@powerlearn.us",
             "X-Powerlearn-Admin": "true",
@@ -276,8 +215,8 @@ def test_get_kpis():
     assert "repeated_issues_count" in kpis
     assert "pct_implemented" in kpis
     assert "by_status" in kpis
-    assert "by_category" in kpis
     assert "by_technical_block" in kpis
+    assert "by_category" not in kpis
 
 
 def test_validation_report():

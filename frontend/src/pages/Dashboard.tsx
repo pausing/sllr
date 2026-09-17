@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Card } from '../components/ui'
+import { Link } from 'react-router'
+import { Button, Card } from '../components/ui'
 import { api, KPIs } from '../lib/api'
 
 export function Dashboard() {
@@ -7,7 +8,8 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.getKPIs()
+    api
+      .getKPIs()
       .then(setKpis)
       .catch(console.error)
       .finally(() => setLoading(false))
@@ -18,9 +20,18 @@ export function Dashboard() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-text mb-6 md:text-3xl">Dashboard</h1>
-      
-      {/* KPI Cards */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold text-text md:text-3xl">Dashboard</h1>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/lessons/new">
+            <Button variant="primary">Add lesson learned</Button>
+          </Link>
+          <Link to="/lessons">
+            <Button variant="default">Browse lessons learned</Button>
+          </Link>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 mb-8 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
           <div className="text-2xl font-bold text-text">{kpis.total_lessons}</div>
@@ -46,11 +57,9 @@ export function Dashboard() {
         </Card>
       </div>
 
-      {/* Charts */}
       <div className="grid grid-cols-1 gap-8">
         <BarChart title="By Status" data={kpis.by_status} />
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <BarChart title="By Category" data={kpis.by_category} />
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <BarChart title="By Technical Block" data={kpis.by_technical_block} />
           <BarChart title="By Implementation Status" data={kpis.by_implementation_status} />
         </div>

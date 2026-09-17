@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { api, Lesson, PortalMe, References } from '../lib/api'
 import { canEditLesson, lessonPath } from '../lib/lessonAccess'
-import { Card, Button, Select, StatusDot } from '../components/ui'
+import { lessonMatchesQuery } from '../lib/lessonSearch'
+import { Card, Button, Select, StatusDot, TextInput } from '../components/ui'
 
 export function Lessons() {
   const [lessons, setLessons] = useState<Lesson[]>([])
@@ -12,8 +13,8 @@ export function Lessons() {
     technical_block: '',
     phase: '',
     status: '',
-    category: '',
   })
+  const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -29,11 +30,17 @@ export function Lessons() {
 
   const handleFilter = () => {
     setLoading(true)
-    api.getLessons(filters)
+    api
+      .getLessons({ ...filters, q: search })
       .then(setLessons)
       .catch(console.error)
       .finally(() => setLoading(false))
   }
+
+  const visible = useMemo(
+    () => lessons.filter((lesson) => lessonMatchesQuery(lesson, search)),
+    [lessons, search],
+  )
 
   if (!refs) return <div className="text-muted">Loading...</div>
 
@@ -48,26 +55,42 @@ export function Lessons() {
 
       <Card className="mb-6">
         <h3 className="text-lg font-medium text-text mb-4">Filters</h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-4">
+          <label className="mb-1 block text-sm font-medium text-text" htmlFor="browse-search">
+            Search
+          </label>
+          <TextInput
+            id="browse-search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search all lesson fields"
+            className="w-full"
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Select
-            options={[{ value: '', label: 'All Technical Blocks' }, ...refs.technical_blocks.map(v => ({ value: v, label: v }))]}
+            options={[
+              { value: '', label: 'All Technical Blocks' },
+              ...refs.technical_blocks.map((v) => ({ value: v, label: v })),
+            ]}
             value={filters.technical_block}
             onChange={(e) => setFilters({ ...filters, technical_block: e.target.value })}
           />
           <Select
-            options={[{ value: '', label: 'All Phases' }, ...refs.phases.map(v => ({ value: v, label: v }))]}
+            options={[
+              { value: '', label: 'All Phases' },
+              ...refs.phases.map((v) => ({ value: v, label: v })),
+            ]}
             value={filters.phase}
             onChange={(e) => setFilters({ ...filters, phase: e.target.value })}
           />
           <Select
-            options={[{ value: '', label: 'All Statuses' }, ...refs.statuses.map(v => ({ value: v, label: v }))]}
+            options={[
+              { value: '', label: 'All Statuses' },
+              ...refs.statuses.map((v) => ({ value: v, label: v })),
+            ]}
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-          />
-          <Select
-            options={[{ value: '', label: 'All Categories' }, ...refs.categories.map(v => ({ value: v, label: v }))]}
-            value={filters.category}
-            onChange={(e) => setFilters({ ...filters, category: e.target.value })}
           />
         </div>
         <Button variant="primary" onClick={handleFilter} className="mt-4">
@@ -77,20 +100,23 @@ export function Lessons() {
 
       {loading ? (
         <div className="text-muted">Loading lessons...</div>
-      ) : lessons.length === 0 ? (
+      ) : visible.length === 0 ? (
         <Card>
           <p className="text-muted">No lessons found. Try adjusting your filters or add a new lesson.</p>
         </Card>
       ) : (
         <div className="space-y-4">
-          {lessons.map((lesson) => {
+          {visible.map((lesson) => {
             const id = lesson['Lesson ID']
             const href = lessonPath(id)
             const showEdit = canEditLesson(me, lesson.Owner)
             return (
               <Card key={id} className="hover:border-accent transition-colors">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <Link to={href} className="min-w-0 flex-1 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                  <Link
+                    to={href}
+                    className="min-w-0 flex-1 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
                     <div className="mb-2 flex flex-wrap items-center gap-3">
                       <span className="text-accent font-mono text-sm">{id}</span>
                       <StatusDot status={lesson.Status} />
@@ -98,8 +124,6 @@ export function Lessons() {
                     <h3 className="text-lg font-medium text-text mb-2 hover:text-accent">{lesson.Title}</h3>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
                       <span>{lesson['Project Phase']}</span>
-                      <span className="hidden sm:inline">•</span>
-                      <span>{lesson.Category}</span>
                       <span className="hidden sm:inline">•</span>
                       <span>{lesson['Technical Block']}</span>
                     </div>

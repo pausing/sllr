@@ -3,16 +3,15 @@ const API_BASE = '/sllr/api'
 export interface Lesson {
   'Lesson ID': string
   Title: string
-  Category: string
   'Technical Block': string
-  'Sub-category': string
   'Project Phase': string
+  'Event Description': string
   'Root Cause': string
-  'What Happened': string
   Impact: string
   'Lesson Learned': string
   Recommendation: string
-  'Recommendation Due Date'?: string
+  'Implementation Owner'?: string
+  'Implementation Due Date'?: string
   Keywords?: string
   Status: string
   'Implementation Status': string
@@ -22,7 +21,6 @@ export interface Lesson {
 }
 
 export interface References {
-  categories: string[]
   technical_blocks: string[]
   phases: string[]
   statuses: string[]
@@ -55,6 +53,9 @@ export interface MyApproverRules {
   email: string | null
   admin: boolean
   technical_blocks: string[]
+  mapped_blocks?: string[]
+  general?: boolean
+  fallback_blocks?: string[]
 }
 
 export interface VocabItem {
@@ -65,7 +66,7 @@ export interface VocabItem {
   active: boolean
 }
 
-export type VocabKind = 'categories' | 'technical_blocks' | 'phases'
+export type VocabKind = 'technical_blocks' | 'phases'
 
 export interface SllrUser {
   email: string
@@ -99,7 +100,6 @@ export interface KPIs {
   pct_implemented: number
   overdue_not_implemented_count: number
   by_status: Record<string, number>
-  by_category: Record<string, number>
   by_technical_block: Record<string, number>
   by_implementation_status: Record<string, number>
 }
@@ -132,7 +132,7 @@ export const api = {
     phase?: string
     status?: string
     implementation_status?: string
-    category?: string
+    q?: string
   }): Promise<Lesson[]> {
     const params = new URLSearchParams()
     if (filters) {
@@ -229,8 +229,12 @@ export const api = {
     URL.revokeObjectURL(url)
   },
 
-  async downloadPDF(): Promise<void> {
-    const res = await fetch(`${API_BASE}/export/pdf`, { method: 'POST' })
+  async downloadPDF(ids?: string[]): Promise<void> {
+    const res = await fetch(`${API_BASE}/export/pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ids ? { ids } : {}),
+    })
     if (!res.ok) {
       const err = await res.json()
       throw new Error(err.detail || 'Failed to generate PDF')
@@ -244,8 +248,12 @@ export const api = {
     URL.revokeObjectURL(url)
   },
 
-  async downloadHTML(): Promise<void> {
-    const res = await fetch(`${API_BASE}/export/html`, { method: 'POST' })
+  async downloadHTML(ids?: string[]): Promise<void> {
+    const res = await fetch(`${API_BASE}/export/html`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ids ? { ids } : {}),
+    })
     if (!res.ok) throw new Error('Failed to generate HTML')
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
@@ -274,6 +282,9 @@ export const api = {
       email: data?.email ?? null,
       admin: data?.admin === true,
       technical_blocks: Array.isArray(data?.technical_blocks) ? data.technical_blocks : [],
+      mapped_blocks: Array.isArray(data?.mapped_blocks) ? data.mapped_blocks : [],
+      general: data?.general === true,
+      fallback_blocks: Array.isArray(data?.fallback_blocks) ? data.fallback_blocks : [],
     }
   },
 
@@ -340,7 +351,6 @@ export const api = {
     if (!res.ok) throw new Error(await readApiError(res, 'Failed to fetch settings'))
     const data = await res.json()
     return {
-      categories: Array.isArray(data?.categories) ? data.categories : [],
       technical_blocks: Array.isArray(data?.technical_blocks) ? data.technical_blocks : [],
       phases: Array.isArray(data?.phases) ? data.phases : [],
     }

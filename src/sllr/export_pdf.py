@@ -1,6 +1,6 @@
 """
-Export lessons learned to PDF: grouped by Phase, then Category (page break between
-categories), ordered by Technical Block and Sub-category within each category.
+Export lessons learned to PDF: grouped by Phase, then Technical Block
+(page break between technical blocks).
 """
 import csv
 from pathlib import Path
@@ -43,34 +43,32 @@ def _phase_order() -> dict[str, int]:
     return order
 
 
+def _event_description(row: dict[str, Any]) -> str:
+    return (row.get("Event Description") or row.get("What Happened") or "") or ""
+
+
+def _impl_due(row: dict[str, Any]) -> str:
+    return (row.get("Implementation Due Date") or row.get("Recommendation Due Date") or "") or ""
+
+
 def _group_lessons_for_pdf(lessons: list[dict[str, Any]]) -> list[tuple[str, str, list[dict[str, Any]]]]:
     """
-    Group lessons by Phase, then Category. Within each category, sort by Technical Block, Sub-category.
-    Returns list of (phase, category, sorted_lessons).
+    Group lessons by Phase, then Technical Block.
+    Returns list of (phase, technical_block, sorted_lessons).
     """
     phase_order = _phase_order()
-    # Group: (phase, category) -> list of lessons
     groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for r in lessons:
         phase = (r.get("Project Phase") or "").strip() or "—"
-        cat = (r.get("Category") or "").strip() or "—"
-        key = (phase, cat)
-        if key not in groups:
-            groups[key] = []
-        groups[key].append(r)
+        block = (r.get("Technical Block") or "").strip() or "—"
+        key = (phase, block)
+        groups.setdefault(key, []).append(r)
 
-    # Sort within each group by Technical Block, Sub-category
     for key in groups:
-        groups[key].sort(
-            key=lambda x: (
-                (x.get("Technical Block") or "").strip(),
-                (x.get("Sub-category") or "").strip(),
-            )
-        )
+        groups[key].sort(key=lambda x: (x.get("Lesson ID") or "").strip())
 
-    # Build ordered list: sort phases by phase_order, then categories
     result: list[tuple[str, str, list[dict[str, Any]]]] = []
-    for (phase, cat), group in sorted(
+    for (phase, block), group in sorted(
         groups.items(),
         key=lambda x: (
             phase_order.get(x[0][0], 999),
@@ -78,7 +76,7 @@ def _group_lessons_for_pdf(lessons: list[dict[str, Any]]) -> list[tuple[str, str
             x[0][1],
         ),
     ):
-        result.append((phase, cat, group))
+        result.append((phase, block, group))
     return result
 
 
@@ -99,8 +97,7 @@ def build_pdf(
     title: str = "Lessons Learned Registry",
 ) -> Path:
     """
-    Build a PDF with one section per (phase, category); page break between categories.
-    Ordered by phase (from phases.csv), then category, then technical block, sub-category.
+    Build a PDF with one section per (phase, technical block); page break between blocks.
     """
     if not REPORTLAB_AVAILABLE:
         raise RuntimeError("reportlab is required for PDF export. Install with: pip install reportlab")
@@ -148,13 +145,13 @@ def build_pdf(
 
     grouped = _group_lessons_for_pdf(lessons)
     first_section = True
-    for phase, category, group in grouped:
+    for phase, block, group in grouped:
         if not first_section:
             story.append(PageBreak())
         first_section = False
         story.append(
             Paragraph(
-                f"Phase: {_escape(phase)} — Category: {_escape(category)}",
+                f"Phase: {_escape(phase)} — Technical Block: {_escape(block)}",
                 heading2,
             )
         )
@@ -163,16 +160,28 @@ def build_pdf(
             lid = _escape(r.get("Lesson ID") or "")
             title_text = _escape(r.get("Title") or "")
             tech_block = _escape(r.get("Technical Block") or "")
-            sub = _escape(r.get("Sub-category") or "")
             story.append(Paragraph(f"<b>{lid}</b> {title_text}", body))
-            story.append(Paragraph(f"Technical Block: {tech_block} | Sub-category: {sub}", small))
-            story.append(Paragraph(f"<b>What happened:</b> {_escape(r.get('What Happened') or '')}", small))
+            story.append(Paragraph(f"Technical Block: {tech_block}", small))
+            story.append(
+                Paragraph(
+                    f"<b>Event description:</b> {_escape(_event_description(r))}",
+                    small,
+                )
+            )
             story.append(Paragraph(f"<b>Lesson learned:</b> {_escape(r.get('Lesson Learned') or '')}", small))
             story.append(Paragraph(f"<b>Recommendation:</b> {_escape(r.get('Recommendation') or '')}", small))
-            due = r.get("Recommendation Due Date") or ""
+            impl_owner = r.get("Implementation Owner") or ""
+            due = _impl_due(r)
             impl = r.get("Implementation Status") or ""
-            if due or impl:
-                story.append(Paragraph(f"<b>Due date:</b> {_escape(due)} | <b>Implementation:</b> {_escape(impl)}", small))
+            extras = []
+            if impl_owner:
+                extras.append(f"<b>Implementation owner:</b> {_escape(impl_owner)}")
+            if due:
+                extras.append(f"<b>Implementation due date:</b> {_escape(due)}")
+            if impl:
+                extras.append(f"<b>Implementation:</b> {_escape(impl)}")
+            if extras:
+                story.append(Paragraph(" | ".join(extras), small))
             story.append(Spacer(1, 2 * mm))
         story.append(Spacer(1, 4 * mm))
 

@@ -119,17 +119,16 @@ All endpoints are prefixed with the base path (default `/sllr`):
 
 ## Frontend Pages
 
-- `/` — Dashboard (5 KPI cards + 4 bar charts)
-- `/lessons` — Browse table + filters + inline status updates
+- `/` — Dashboard (KPI cards, technical-block charts, Add / Browse buttons)
+- `/lessons` — Browse + all-field search + filters
 - `/lessons/new` — Add new lesson (suggests next ID, saves as Draft)
-- `/lessons/:id` — Edit lesson (ID read-only)
-- `/approve` — Approve workflow (Draft → Approved)
+- `/lessons/:id` — View / edit lesson (ID read-only)
+- `/approve` — Approve workflow (Draft → Approved; assigns implementation owner and due date)
 - `/implementation` — Implementation follow-up (track recommendations)
-- `/validation` — Validation errors
-- `/duplicates` — Exact + near duplicates
-- `/report` — Embedded HTML report (iframe)
-- `/export` — Download PDF / HTML
-- `/reports` — Download text reports + dashboard CSV
+- `/report` — Live card gallery with filtered HTML/PDF download
+- `/approvers` — Admin: Technical Block approvers plus General default
+- `/settings` — Admin: technical blocks and project phases
+- `/activity` — Admin: write activity log
 
 ## Data Model
 
@@ -137,12 +136,10 @@ Lesson schema defined in `src/sllr/config.py`. Required fields:
 
 - **Lesson ID** (unique, immutable after create)
 - **Title** (≤200 chars)
-- **Category** (controlled: Development, Engineering, Procurement, Construction, O&M)
 - **Technical Block** (controlled: Civil, HV & Grid, PV, BESS)
-- **Sub-category** (free text)
 - **Project Phase** (controlled: Development, Pre-Execution, Construction, O&M)
+- **Event Description**
 - **Root Cause**
-- **What Happened**
 - **Impact**
 - **Lesson Learned** (≤500 chars)
 - **Recommendation**
@@ -150,9 +147,9 @@ Lesson schema defined in `src/sllr/config.py`. Required fields:
 - **Implementation Status** (controlled: Not Implemented, Implemented)
 - **Owner**
 
-Optional: Recommendation Due Date (YYYY-MM-DD), Keywords, Created Date, Modified Date
+Optional: Implementation Owner, Implementation Due Date (YYYY-MM-DD; both required when approving), Keywords, Created Date, Modified Date
 
-Controlled vocabularies in `data/*.csv`. API enforces exact, case-sensitive values.
+Controlled vocabularies in `data/*.csv` (technical blocks and phases are also editable in Settings). API enforces exact, case-sensitive values. Legacy Category / Sub-category / What Happened columns are ignored on read (What Happened maps to Event Description).
 
 ## Storage
 
@@ -174,7 +171,7 @@ The original Streamlit UI is in `legacy/streamlit_app.py`. See `legacy/README.md
 
 - **Total Lessons**
 - **Capture-to-Approval Time** (avg days)
-- **Repeated Issues** (same technical block / category / root cause pattern)
+- **Repeated Issues** (same technical block / root cause pattern)
 - **% Recommendations Implemented** (among approved lessons)
 - **Overdue (Not Implemented)** (approved, past due date, not implemented)
 
