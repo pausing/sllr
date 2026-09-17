@@ -1,4 +1,4 @@
-"""Admin Settings: CRUD for live categories, technical blocks, and project phases."""
+"""Admin Settings: CRUD for live technical blocks and project phases."""
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request

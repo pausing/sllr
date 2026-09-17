@@ -44,16 +44,11 @@ export function LessonForm({
       </Field>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Field label="Category" required>
-          <Select
-            options={refs.categories.map((v) => ({ value: v, label: v }))}
-            value={lesson.Category}
-            onChange={(e) => onChange({ ...lesson, Category: e.target.value })}
-            required
-          />
-        </Field>
-
-        <Field label="Technical Block" required>
+        <Field
+          label="Technical Block"
+          required
+          hint="The engineering area where the solution is identified and owned. Choose based on where the fix belongs, not necessarily where the problem was observed."
+        >
           <Select
             options={refs.technical_blocks.map((v) => ({ value: v, label: v }))}
             value={lesson['Technical Block']}
@@ -61,18 +56,12 @@ export function LessonForm({
             required
           />
         </Field>
-      </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Field label="Sub-category" required>
-          <TextInput
-            value={lesson['Sub-category']}
-            onChange={(e) => onChange({ ...lesson, 'Sub-category': e.target.value })}
-            required
-          />
-        </Field>
-
-        <Field label="Project Phase" required>
+        <Field
+          label="Project Phase"
+          required
+          hint="The point in the project life cycle where the solution must be implemented to prevent recurrence. A lesson found late (e.g. at commissioning) is often solved earlier (e.g. in design or procurement) — pick the phase where the action lands."
+        >
           <Select
             options={refs.phases.map((v) => ({ value: v, label: v }))}
             value={lesson['Project Phase']}
@@ -82,18 +71,18 @@ export function LessonForm({
         </Field>
       </div>
 
-      <Field label="Root Cause" required>
+      <Field label="Event Description" required>
         <TextArea
-          value={lesson['Root Cause']}
-          onChange={(e) => onChange({ ...lesson, 'Root Cause': e.target.value })}
+          value={lesson['Event Description']}
+          onChange={(e) => onChange({ ...lesson, 'Event Description': e.target.value })}
           required
         />
       </Field>
 
-      <Field label="What Happened" required>
+      <Field label="Root Cause" required>
         <TextArea
-          value={lesson['What Happened']}
-          onChange={(e) => onChange({ ...lesson, 'What Happened': e.target.value })}
+          value={lesson['Root Cause']}
+          onChange={(e) => onChange({ ...lesson, 'Root Cause': e.target.value })}
           required
         />
       </Field>
@@ -124,22 +113,30 @@ export function LessonForm({
       </Field>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Field label="Recommendation Due Date">
+        <Field label="Implementation Owner">
           <TextInput
-            type="date"
-            value={lesson['Recommendation Due Date'] || ''}
-            onChange={(e) => onChange({ ...lesson, 'Recommendation Due Date': e.target.value })}
+            type="email"
+            value={lesson['Implementation Owner'] || ''}
+            onChange={(e) => onChange({ ...lesson, 'Implementation Owner': e.target.value })}
           />
         </Field>
 
-        <Field label="Owner" required>
+        <Field label="Implementation Due Date">
           <TextInput
-            value={lesson.Owner}
-            onChange={(e) => onChange({ ...lesson, Owner: e.target.value })}
-            required
+            type="date"
+            value={lesson['Implementation Due Date'] || ''}
+            onChange={(e) => onChange({ ...lesson, 'Implementation Due Date': e.target.value })}
           />
         </Field>
       </div>
+
+      <Field label="Owner" required>
+        <TextInput
+          value={lesson.Owner}
+          onChange={(e) => onChange({ ...lesson, Owner: e.target.value })}
+          required
+        />
+      </Field>
 
       <Field label="Keywords">
         <TextInput

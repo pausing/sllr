@@ -4,16 +4,10 @@ import { Button, Card, TextInput } from '../components/ui'
 
 const TABS: { id: VocabKind; label: string; singular: string; help: string }[] = [
   {
-    id: 'categories',
-    label: 'Categories',
-    singular: 'category',
-    help: 'Lesson Category values used on create/edit forms and validation.',
-  },
-  {
     id: 'technical_blocks',
     label: 'Technical Blocks',
     singular: 'technical block',
-    help: 'Lesson Technical Block values. Approvers are assigned per block.',
+    help: 'Lesson Technical Block values. Approvers are assigned per block, with a General default when a block has no assignees.',
   },
   {
     id: 'phases',
@@ -26,11 +20,10 @@ const TABS: { id: VocabKind; label: string; singular: string; help: string }[] =
 export function Settings() {
   const [me, setMe] = useState<PortalMe | null>(null)
   const [items, setItems] = useState<Record<VocabKind, VocabItem[]>>({
-    categories: [],
     technical_blocks: [],
     phases: [],
   })
-  const [tab, setTab] = useState<VocabKind>('categories')
+  const [tab, setTab] = useState<VocabKind>('technical_blocks')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)

@@ -52,8 +52,8 @@ export function Implementation() {
                 <tr className="border-b border-line text-left">
                   <th className="py-3 px-4 font-medium text-muted">Lesson ID</th>
                   <th className="py-3 px-4 font-medium text-muted">Title</th>
-                  <th className="py-3 px-4 font-medium text-muted">Due Date</th>
-                  <th className="py-3 px-4 font-medium text-muted">Owner</th>
+                  <th className="py-3 px-4 font-medium text-muted">Implementation Due Date</th>
+                  <th className="py-3 px-4 font-medium text-muted">Implementation Owner</th>
                   <th className="py-3 px-4 font-medium text-muted">Implementation Status</th>
                 </tr>
               </thead>
@@ -62,8 +62,8 @@ export function Implementation() {
                   <tr key={lesson['Lesson ID']} className="border-b border-line hover:bg-raised">
                     <td className="py-3 px-4 font-mono text-accent">{lesson['Lesson ID']}</td>
                     <td className="py-3 px-4 text-text">{lesson.Title}</td>
-                    <td className="py-3 px-4 text-muted">{lesson['Recommendation Due Date'] || '—'}</td>
-                    <td className="py-3 px-4 text-muted">{lesson.Owner}</td>
+                    <td className="py-3 px-4 text-muted">{lesson['Implementation Due Date'] || '—'}</td>
+                    <td className="py-3 px-4 text-muted">{lesson['Implementation Owner'] || '—'}</td>
                     <td className="py-3 px-4">
                       <Select
                         options={refs.implementation_statuses.map(v => ({ value: v, label: v }))}

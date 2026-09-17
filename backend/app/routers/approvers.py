@@ -9,12 +9,15 @@ from backend.app.identity import normalize_email, portal_identity, require_porta
 from backend.app.storage import (
     add_approver_mapping,
     delete_approver_mapping,
+    effective_approver_blocks,
+    empty_technical_blocks,
     get_approver_blocks,
     list_approvers_by_block,
     list_approvers_grouped,
     set_approver_blocks,
     set_approvers_for_block,
 )
+from src.sllr.config import GENERAL_TECHNICAL_BLOCK
 from src.sllr.loaders import load_all_references
 
 router = APIRouter()
@@ -39,7 +42,7 @@ class ApproverBlockSet(BaseModel):
 
 def _valid_blocks() -> set[str]:
     refs = load_all_references()
-    return set(refs.get("technical_blocks") or [])
+    return set(refs.get("technical_blocks") or []) | {GENERAL_TECHNICAL_BLOCK}
 
 
 def _require_known_blocks(blocks: list[str]) -> list[str]:
@@ -65,10 +68,14 @@ async def get_my_approver_rules(request: Request):
     """Technical blocks the current portal user may approve."""
     ident = portal_identity(request)
     email = normalize_email(ident.get("email"))
+    mapped = get_approver_blocks(email) if email else []
     return {
         "email": email or ident.get("email"),
         "admin": ident.get("admin") is True,
-        "technical_blocks": get_approver_blocks(email) if email else [],
+        "technical_blocks": effective_approver_blocks(email) if email else [],
+        "mapped_blocks": mapped,
+        "general": GENERAL_TECHNICAL_BLOCK in mapped,
+        "fallback_blocks": empty_technical_blocks() if GENERAL_TECHNICAL_BLOCK in mapped else [],
     }
 
 

@@ -126,6 +126,7 @@ export function LessonEdit() {
               <DetailField label="Status" value={lesson.Status} />
               <DetailField label="Implementation Status" value={lesson['Implementation Status']} />
               <DetailField label="Owner" value={lesson.Owner} />
+              <DetailField label="Implementation Owner" value={lesson['Implementation Owner']} />
               <DetailField label="Keywords" value={lesson.Keywords} />
             </div>
           </Card>
@@ -133,9 +134,7 @@ export function LessonEdit() {
           <Card>
             <h2 className="mb-4 text-lg font-medium text-text">Classification</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <DetailField label="Category" value={lesson.Category} />
               <DetailField label="Technical Block" value={lesson['Technical Block']} />
-              <DetailField label="Sub-category" value={lesson['Sub-category']} />
               <DetailField label="Project Phase" value={lesson['Project Phase']} />
             </div>
           </Card>
@@ -143,12 +142,12 @@ export function LessonEdit() {
           <Card>
             <h2 className="mb-4 text-lg font-medium text-text">What we learned</h2>
             <div className="grid grid-cols-1 gap-4">
+              <DetailField label="Event Description" value={lesson['Event Description']} wide />
               <DetailField label="Root Cause" value={lesson['Root Cause']} wide />
-              <DetailField label="What Happened" value={lesson['What Happened']} wide />
               <DetailField label="Impact" value={lesson.Impact} wide />
               <DetailField label="Lesson Learned" value={lesson['Lesson Learned']} wide />
               <DetailField label="Recommendation" value={lesson.Recommendation} wide />
-              <DetailField label="Recommendation Due Date" value={lesson['Recommendation Due Date']} />
+              <DetailField label="Implementation Due Date" value={lesson['Implementation Due Date']} />
             </div>
           </Card>
 

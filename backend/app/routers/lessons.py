@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from backend.app.activity import changed_values, lesson_write_action, log_activity
-from backend.app.approval import enforce_approval_if_needed
+from backend.app.approval import enforce_approval_if_needed, enforce_implementation_on_approve
 from backend.app.storage import (
     find_lesson_by_id,
     insert_lesson,
@@ -26,39 +26,36 @@ router = APIRouter()
 
 
 class LessonCreate(BaseModel):
-    """Lesson creation schema."""
+    """Lesson creation schema. Recommendation due date is not accepted on create."""
     lesson_id: str = Field(..., alias="Lesson ID")
     title: str = Field(..., max_length=200, alias="Title")
-    category: str = Field(..., alias="Category")
     technical_block: str = Field(..., alias="Technical Block")
-    sub_category: str = Field(..., alias="Sub-category")
     project_phase: str = Field(..., alias="Project Phase")
+    event_description: str = Field(..., alias="Event Description")
     root_cause: str = Field(..., alias="Root Cause")
-    what_happened: str = Field(..., alias="What Happened")
     impact: str = Field(..., alias="Impact")
     lesson_learned: str = Field(..., max_length=500, alias="Lesson Learned")
     recommendation: str = Field(..., alias="Recommendation")
-    recommendation_due_date: Optional[str] = Field(None, alias="Recommendation Due Date")
     keywords: Optional[str] = Field("", alias="Keywords")
     owner: Optional[str] = Field(None, alias="Owner")
 
     class Config:
         populate_by_name = True
+        extra = "ignore"
 
 
 class LessonUpdate(BaseModel):
     """Lesson update schema (all fields except Lesson ID)."""
     title: Optional[str] = Field(None, max_length=200, alias="Title")
-    category: Optional[str] = Field(None, alias="Category")
     technical_block: Optional[str] = Field(None, alias="Technical Block")
-    sub_category: Optional[str] = Field(None, alias="Sub-category")
     project_phase: Optional[str] = Field(None, alias="Project Phase")
+    event_description: Optional[str] = Field(None, alias="Event Description")
     root_cause: Optional[str] = Field(None, alias="Root Cause")
-    what_happened: Optional[str] = Field(None, alias="What Happened")
     impact: Optional[str] = Field(None, alias="Impact")
     lesson_learned: Optional[str] = Field(None, max_length=500, alias="Lesson Learned")
     recommendation: Optional[str] = Field(None, alias="Recommendation")
-    recommendation_due_date: Optional[str] = Field(None, alias="Recommendation Due Date")
+    implementation_owner: Optional[str] = Field(None, alias="Implementation Owner")
+    implementation_due_date: Optional[str] = Field(None, alias="Implementation Due Date")
     keywords: Optional[str] = Field(None, alias="Keywords")
     status: Optional[str] = Field(None, alias="Status")
     implementation_status: Optional[str] = Field(None, alias="Implementation Status")
@@ -66,6 +63,7 @@ class LessonUpdate(BaseModel):
 
     class Config:
         populate_by_name = True
+        extra = "ignore"
 
 
 class LessonPatch(BaseModel):
@@ -73,30 +71,65 @@ class LessonPatch(BaseModel):
     status: Optional[str] = Field(None, alias="Status")
     implementation_status: Optional[str] = Field(None, alias="Implementation Status")
     title: Optional[str] = Field(None, alias="Title")
-    category: Optional[str] = Field(None, alias="Category")
     technical_block: Optional[str] = Field(None, alias="Technical Block")
-    sub_category: Optional[str] = Field(None, alias="Sub-category")
     project_phase: Optional[str] = Field(None, alias="Project Phase")
+    event_description: Optional[str] = Field(None, alias="Event Description")
     root_cause: Optional[str] = Field(None, alias="Root Cause")
-    what_happened: Optional[str] = Field(None, alias="What Happened")
     impact: Optional[str] = Field(None, alias="Impact")
     lesson_learned: Optional[str] = Field(None, alias="Lesson Learned")
     recommendation: Optional[str] = Field(None, alias="Recommendation")
-    recommendation_due_date: Optional[str] = Field(None, alias="Recommendation Due Date")
+    implementation_owner: Optional[str] = Field(None, alias="Implementation Owner")
+    implementation_due_date: Optional[str] = Field(None, alias="Implementation Due Date")
     keywords: Optional[str] = Field(None, alias="Keywords")
     owner: Optional[str] = Field(None, alias="Owner")
 
     class Config:
         populate_by_name = True
+        extra = "ignore"
 
 
-_STATUS_PATCH_FIELDS = frozenset({"status", "implementation_status"})
+_STATUS_PATCH_FIELDS = frozenset(
+    {
+        "status",
+        "implementation_status",
+        "implementation_owner",
+        "implementation_due_date",
+    }
+)
 
 
 def _patch_changes_content(patch: LessonPatch) -> bool:
-    """True when the patch includes fields other than status transitions."""
+    """True when the patch includes fields other than status / implementation assignment."""
     payload = patch.model_dump(exclude_unset=True)
     return bool(set(payload) - _STATUS_PATCH_FIELDS)
+
+
+def _lesson_matches_query(lesson: dict[str, Any], q: str) -> bool:
+    needle = (q or "").strip().lower()
+    if not needle:
+        return True
+    return any(needle in str(value or "").lower() for value in lesson.values())
+
+
+def _apply_update_fields(target: dict[str, Any], payload: Dict[str, Any]) -> None:
+    mapping = {
+        "title": "Title",
+        "technical_block": "Technical Block",
+        "project_phase": "Project Phase",
+        "event_description": "Event Description",
+        "root_cause": "Root Cause",
+        "impact": "Impact",
+        "lesson_learned": "Lesson Learned",
+        "recommendation": "Recommendation",
+        "implementation_owner": "Implementation Owner",
+        "implementation_due_date": "Implementation Due Date",
+        "keywords": "Keywords",
+        "status": "Status",
+        "implementation_status": "Implementation Status",
+    }
+    for key, column in mapping.items():
+        if key in payload and payload[key] is not None:
+            target[column] = payload[key]
 
 
 @router.get("/lessons")
@@ -105,14 +138,13 @@ async def list_lessons(
     phase: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     implementation_status: Optional[str] = Query(None),
-    category: Optional[str] = Query(None),
+    q: Optional[str] = Query(None),
 ):
     """
-    List all lessons with optional filters.
+    List all lessons with optional filters. ``q`` matches any lesson field.
     """
     lessons = load_lessons_with_lock()
-    
-    # Apply filters
+
     if technical_block:
         lessons = [l for l in lessons if l.get("Technical Block") == technical_block]
     if phase:
@@ -121,9 +153,9 @@ async def list_lessons(
         lessons = [l for l in lessons if l.get("Status") == status]
     if implementation_status:
         lessons = [l for l in lessons if l.get("Implementation Status") == implementation_status]
-    if category:
-        lessons = [l for l in lessons if l.get("Category") == category]
-    
+    if q:
+        lessons = [l for l in lessons if _lesson_matches_query(l, q)]
+
     return lessons
 
 
@@ -152,26 +184,24 @@ async def create_lesson(lesson: LessonCreate, request: Request):
     Create a new lesson. Status is forced to Draft, Implementation Status to Not Implemented.
     Returns 409 if lesson ID already exists, 422 if validation fails.
     Owner defaults to X-Powerlearn-Email when the client omits it.
+    Implementation Owner / Due Date are assigned later on approval.
     """
-    # Check for duplicate ID
     if lesson_id_exists(lesson.lesson_id):
         raise HTTPException(status_code=409, detail=f"Lesson ID {lesson.lesson_id} already exists")
-    
-    # Build the row
+
     now = datetime.now().strftime("%Y-%m-%d")
     row = {
         "Lesson ID": lesson.lesson_id,
         "Title": lesson.title,
-        "Category": lesson.category,
         "Technical Block": lesson.technical_block,
-        "Sub-category": lesson.sub_category,
         "Project Phase": lesson.project_phase,
+        "Event Description": lesson.event_description,
         "Root Cause": lesson.root_cause,
-        "What Happened": lesson.what_happened,
         "Impact": lesson.impact,
         "Lesson Learned": lesson.lesson_learned,
         "Recommendation": lesson.recommendation,
-        "Recommendation Due Date": lesson.recommendation_due_date or "",
+        "Implementation Owner": "",
+        "Implementation Due Date": "",
         "Keywords": lesson.keywords or "",
         "Status": "Draft",
         "Implementation Status": "Not Implemented",
@@ -179,13 +209,12 @@ async def create_lesson(lesson: LessonCreate, request: Request):
         "Created Date": now,
         "Modified Date": now,
     }
-    
-    # Validate
+
     refs = load_all_references()
     errors = validate_lesson(row, refs)
     if errors:
         raise HTTPException(status_code=422, detail={"errors": errors})
-    
+
     insert_lesson(row)
     log_activity(
         request,
@@ -207,51 +236,20 @@ async def update_lesson(lesson_id: str, lesson: LessonUpdate, request: Request):
         raise HTTPException(status_code=404, detail=f"Lesson {lesson_id} not found")
 
     require_lesson_editor(request, existing.get("Owner"))
-    
-    # Build updated row
+
     now = datetime.now().strftime("%Y-%m-%d")
     updated = dict(existing)
-    
-    # Update provided fields
-    if lesson.title is not None:
-        updated["Title"] = lesson.title
-    if lesson.category is not None:
-        updated["Category"] = lesson.category
-    if lesson.technical_block is not None:
-        updated["Technical Block"] = lesson.technical_block
-    if lesson.sub_category is not None:
-        updated["Sub-category"] = lesson.sub_category
-    if lesson.project_phase is not None:
-        updated["Project Phase"] = lesson.project_phase
-    if lesson.root_cause is not None:
-        updated["Root Cause"] = lesson.root_cause
-    if lesson.what_happened is not None:
-        updated["What Happened"] = lesson.what_happened
-    if lesson.impact is not None:
-        updated["Impact"] = lesson.impact
-    if lesson.lesson_learned is not None:
-        updated["Lesson Learned"] = lesson.lesson_learned
-    if lesson.recommendation is not None:
-        updated["Recommendation"] = lesson.recommendation
-    if lesson.recommendation_due_date is not None:
-        updated["Recommendation Due Date"] = lesson.recommendation_due_date
-    if lesson.keywords is not None:
-        updated["Keywords"] = lesson.keywords
-    if lesson.status is not None:
-        updated["Status"] = lesson.status
-    if lesson.implementation_status is not None:
-        updated["Implementation Status"] = lesson.implementation_status
+    _apply_update_fields(updated, lesson.model_dump(exclude_unset=True))
     updated["Owner"] = resolve_owner(lesson.owner, request, existing.get("Owner"))
-    
     updated["Modified Date"] = now
-    
-    # Validate
+
     refs = load_all_references()
     errors = validate_lesson(updated, refs)
     if errors:
         raise HTTPException(status_code=422, detail={"errors": errors})
 
     enforce_approval_if_needed(request, existing, updated)
+    enforce_implementation_on_approve(existing, updated)
     update_lesson_row(lesson_id, updated)
     action = lesson_write_action("update_lesson", existing, updated)
     log_activity(
@@ -275,51 +273,20 @@ async def patch_lesson(lesson_id: str, patch: LessonPatch, request: Request):
 
     if _patch_changes_content(patch):
         require_lesson_editor(request, existing.get("Owner"))
-    
-    # Build patched row
+
     now = datetime.now().strftime("%Y-%m-%d")
     patched = dict(existing)
-    
-    # Apply patches
-    if patch.status is not None:
-        patched["Status"] = patch.status
-    if patch.implementation_status is not None:
-        patched["Implementation Status"] = patch.implementation_status
-    if patch.title is not None:
-        patched["Title"] = patch.title
-    if patch.category is not None:
-        patched["Category"] = patch.category
-    if patch.technical_block is not None:
-        patched["Technical Block"] = patch.technical_block
-    if patch.sub_category is not None:
-        patched["Sub-category"] = patch.sub_category
-    if patch.project_phase is not None:
-        patched["Project Phase"] = patch.project_phase
-    if patch.root_cause is not None:
-        patched["Root Cause"] = patch.root_cause
-    if patch.what_happened is not None:
-        patched["What Happened"] = patch.what_happened
-    if patch.impact is not None:
-        patched["Impact"] = patch.impact
-    if patch.lesson_learned is not None:
-        patched["Lesson Learned"] = patch.lesson_learned
-    if patch.recommendation is not None:
-        patched["Recommendation"] = patch.recommendation
-    if patch.recommendation_due_date is not None:
-        patched["Recommendation Due Date"] = patch.recommendation_due_date
-    if patch.keywords is not None:
-        patched["Keywords"] = patch.keywords
+    _apply_update_fields(patched, patch.model_dump(exclude_unset=True))
     patched["Owner"] = resolve_owner(patch.owner, request, existing.get("Owner"))
-    
     patched["Modified Date"] = now
-    
-    # Validate
+
     refs = load_all_references()
     errors = validate_lesson(patched, refs)
     if errors:
         raise HTTPException(status_code=422, detail={"errors": errors})
 
     enforce_approval_if_needed(request, existing, patched)
+    enforce_implementation_on_approve(existing, patched)
     update_lesson_row(lesson_id, patched)
     action = lesson_write_action("patch_lesson", existing, patched)
     log_activity(

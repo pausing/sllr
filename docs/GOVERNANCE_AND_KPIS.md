@@ -4,10 +4,10 @@
 
 | KPI | Objective | How Computed |
 |-----|-----------|--------------|
-| **Repeated Issues** | Indicator of system effectiveness | Count of (Technical Block, Category, Root Cause) combinations that appear in more than one lesson |
+| **Repeated Issues** | Indicator of system effectiveness | Count of (Technical Block, Root Cause) combinations that appear in more than one lesson |
 | **Capture-to-Approval Time** | Process efficiency | Average days from Created Date to Modified Date for lessons with Status = Approved |
 | **% Recommendations Implemented** | Track implementation of approved lessons | (Count of Approved lessons with Implementation Status = Implemented) / Approved count × 100 |
-| **Overdue (not implemented)** | Follow up on due dates | Count of Approved lessons where Recommendation Due Date is in the past and Implementation Status ≠ Implemented |
+| **Overdue (not implemented)** | Follow up on due dates | Count of Approved lessons where Implementation Due Date is in the past and Implementation Status ≠ Implemented |
 
 ## Lifecycle
 
@@ -15,7 +15,7 @@
 
 - **Draft**: New or under review (only status allowed when creating a lesson).
 - **Approved**: Reviewed and approved for reuse.
-- **Implementation Follow Up**: In the app, use **Implementation Follow Up** to set **Implementation Status** from **Not Implemented** to **Implemented** once the recommendation has been applied. Set **Recommendation Due Date** when adding a lesson to track deadlines.
+- **Implementation Follow Up**: In the app, use **Implementation Follow Up** to set **Implementation Status** from **Not Implemented** to **Implemented** once the recommendation has been applied. Approvers assign **Implementation Owner** and **Implementation Due Date** when moving a lesson from Draft to Approved.
 
 ## Running KPIs
 

@@ -30,15 +30,17 @@ interface FieldProps {
   children: ReactNode
   error?: string
   required?: boolean
+  hint?: string
 }
 
-export function Field({ label, children, error, required }: FieldProps) {
+export function Field({ label, children, error, required, hint }: FieldProps) {
   return (
     <div className="flex flex-col gap-1">
       <label className="text-sm font-medium text-text">
         {label}
         {required && <span className="text-danger ml-1">*</span>}
       </label>
+      {hint ? <p className="text-xs leading-relaxed text-muted">{hint}</p> : null}
       {children}
       {error && <p className="text-sm text-danger">{error}</p>}
     </div>

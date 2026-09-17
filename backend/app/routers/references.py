@@ -12,7 +12,7 @@ router = APIRouter()
 @router.get("/references")
 async def get_references():
     """
-    Get all controlled vocabularies (categories, technical_blocks, phases, statuses, implementation_statuses).
+    Get all controlled vocabularies (technical_blocks, phases, statuses, implementation_statuses).
     """
     refs = load_all_references()
     return refs

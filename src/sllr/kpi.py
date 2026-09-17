@@ -48,7 +48,6 @@ def compute_kpis(rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
             "pct_implemented": 0.0,
             "overdue_not_implemented_count": 0,
             "by_status": {},
-            "by_category": {},
             "by_technical_block": {},
             "by_implementation_status": {},
         }
@@ -92,25 +91,22 @@ def compute_kpis(rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     for r in approved_rows:
         if (r.get("Implementation Status") or "").strip() == "Implemented":
             continue
-        due = _parse_date(r.get("Recommendation Due Date"))
+        due = _parse_date(r.get("Implementation Due Date") or r.get("Recommendation Due Date"))
         if due and due.date() < today:
             overdue_not_implemented_count += 1
 
-    # Repeated issues: count lessons that share same (Technical Block, Category, Root Cause) pattern
+    # Repeated issues: count lessons that share same (Technical Block, Root Cause) pattern
     pattern_count: dict[str, int] = defaultdict(int)
     for r in rows:
         key = (
             (r.get("Technical Block") or "").strip(),
-            (r.get("Category") or "").strip(),
             (r.get("Root Cause") or "").strip()[:100],
         )
         pattern_count[str(key)] += 1
     repeated_issues = sum(1 for c in pattern_count.values() if c > 1)
 
-    by_category = defaultdict(int)
     by_technical_block = defaultdict(int)
     for r in rows:
-        by_category[(r.get("Category") or "").strip() or "Unknown"] += 1
         by_technical_block[(r.get("Technical Block") or "").strip() or "Unknown"] += 1
 
     return {
@@ -122,7 +118,6 @@ def compute_kpis(rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
         "pct_implemented": pct_implemented,
         "overdue_not_implemented_count": overdue_not_implemented_count,
         "by_status": dict(by_status),
-        "by_category": dict(by_category),
         "by_technical_block": dict(by_technical_block),
         "by_implementation_status": dict(by_implementation_status),
     }
@@ -134,7 +129,7 @@ def kpi_summary_text(kpis: dict[str, Any] | None = None) -> str:
     lines = [
         "--- SLLR KPI Summary ---",
         f"Total lessons: {kpis['total_lessons']}",
-        f"Repeated issues (same technical block/category/root cause): {kpis['repeated_issues_count']}",
+        f"Repeated issues (same technical block/root cause): {kpis['repeated_issues_count']}",
         f"Avg capture-to-approval (days): {kpis['capture_to_approval_days_avg'] or 'N/A'}",
         f"Approved lessons: {kpis['approved_count']}",
         f"Recommendations implemented: {kpis['implemented_count']} ({kpis['pct_implemented']}% of approved)",

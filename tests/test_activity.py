@@ -6,6 +6,8 @@ from fastapi.testclient import TestClient
 
 os.environ.setdefault("SLLR_BASE_PATH", "/sllr")
 
+from tests.lesson_fixtures import lesson_body
+
 ADMIN = {
     "X-Powerlearn-User-Id": "u-admin",
     "X-Powerlearn-Email": "pablo@powerlearn.us",
@@ -19,20 +21,7 @@ USER = {
 
 
 def _lesson_body(lesson_id: str, owner: str = "user@powerlearn.us") -> dict:
-    return {
-        "Lesson ID": lesson_id,
-        "Title": f"Lesson {lesson_id}",
-        "Category": "Engineering",
-        "Technical Block": "PV",
-        "Sub-category": "Modules",
-        "Project Phase": "Construction",
-        "Root Cause": "Test root cause",
-        "What Happened": "Test what happened",
-        "Impact": "Test impact",
-        "Lesson Learned": "Test lesson learned",
-        "Recommendation": "Test recommendation",
-        "Owner": owner,
-    }
+    return lesson_body(lesson_id, owner=owner, Title=f"Lesson {lesson_id}")
 
 
 @pytest.fixture

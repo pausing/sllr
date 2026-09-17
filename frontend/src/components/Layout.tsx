@@ -13,11 +13,7 @@ const NAV_ITEMS: { path: string; label: string; adminOnly?: boolean }[] = [
   { path: '/settings', label: 'Settings', adminOnly: true },
   { path: '/activity', label: 'Activity', adminOnly: true },
   { path: '/implementation', label: 'Implementation' },
-  { path: '/validation', label: 'Validation' },
-  { path: '/duplicates', label: 'Duplicates' },
   { path: '/report', label: 'View Report' },
-  { path: '/export', label: 'Export' },
-  { path: '/reports', label: 'Reports' },
 ]
 
 function normalizePath(pathname: string): string {

@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { api, References } from '../lib/api'
 import { Card, Button, Field, TextInput, TextArea, Select } from '../components/ui'
+import {
+  NEW_LESSON_INSTRUCTIONS_PARAGRAPHS,
+  NEW_LESSON_INSTRUCTIONS_TITLE,
+} from '../content/newLessonInstructions'
 
 export function LessonNew() {
   const navigate = useNavigate()
@@ -10,16 +14,13 @@ export function LessonNew() {
   const [formData, setFormData] = useState({
     'Lesson ID': '',
     Title: '',
-    Category: '',
     'Technical Block': '',
-    'Sub-category': '',
     'Project Phase': '',
+    'Event Description': '',
     'Root Cause': '',
-    'What Happened': '',
     Impact: '',
     'Lesson Learned': '',
     Recommendation: '',
-    'Recommendation Due Date': '',
     Keywords: '',
     Owner: '',
   })
@@ -31,7 +32,7 @@ export function LessonNew() {
       .then(([r, n, me]) => {
         setRefs(r)
         setNextId(n.suggested_id)
-        setFormData(f => ({
+        setFormData((f) => ({
           ...f,
           'Lesson ID': n.suggested_id,
           Owner: f.Owner || me?.email || '',
@@ -44,7 +45,7 @@ export function LessonNew() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    
+
     try {
       await api.createLesson(formData)
       navigate('/lessons')
@@ -60,7 +61,16 @@ export function LessonNew() {
   return (
     <div className="max-w-3xl">
       <h1 className="text-2xl font-bold text-text mb-6 md:text-3xl">Add New Lesson</h1>
-      
+
+      <Card className="mb-6">
+        <h2 className="mb-3 text-lg font-medium text-text">{NEW_LESSON_INSTRUCTIONS_TITLE}</h2>
+        <div className="space-y-3 text-sm leading-relaxed text-muted">
+          {NEW_LESSON_INSTRUCTIONS_PARAGRAPHS.map((paragraph) => (
+            <p key={paragraph.slice(0, 40)}>{paragraph}</p>
+          ))}
+        </div>
+      </Card>
+
       <Card>
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
@@ -88,37 +98,32 @@ export function LessonNew() {
           </Field>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Field label="Category" required>
+            <Field
+              label="Technical Block"
+              required
+              hint="The engineering area where the solution is identified and owned. Choose based on where the fix belongs, not necessarily where the problem was observed."
+            >
               <Select
-                options={[{ value: '', label: 'Select...' }, ...refs.categories.map(v => ({ value: v, label: v }))]}
-                value={formData.Category}
-                onChange={(e) => setFormData({ ...formData, Category: e.target.value })}
-                required
-              />
-            </Field>
-
-            <Field label="Technical Block" required>
-              <Select
-                options={[{ value: '', label: 'Select...' }, ...refs.technical_blocks.map(v => ({ value: v, label: v }))]}
+                options={[
+                  { value: '', label: 'Select...' },
+                  ...refs.technical_blocks.map((v) => ({ value: v, label: v })),
+                ]}
                 value={formData['Technical Block']}
                 onChange={(e) => setFormData({ ...formData, 'Technical Block': e.target.value })}
                 required
               />
             </Field>
-          </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Field label="Sub-category" required>
-              <TextInput
-                value={formData['Sub-category']}
-                onChange={(e) => setFormData({ ...formData, 'Sub-category': e.target.value })}
-                required
-              />
-            </Field>
-
-            <Field label="Project Phase" required>
+            <Field
+              label="Project Phase"
+              required
+              hint="The point in the project life cycle where the solution must be implemented to prevent recurrence. A lesson found late (e.g. at commissioning) is often solved earlier (e.g. in design or procurement) — pick the phase where the action lands."
+            >
               <Select
-                options={[{ value: '', label: 'Select...' }, ...refs.phases.map(v => ({ value: v, label: v }))]}
+                options={[
+                  { value: '', label: 'Select...' },
+                  ...refs.phases.map((v) => ({ value: v, label: v })),
+                ]}
                 value={formData['Project Phase']}
                 onChange={(e) => setFormData({ ...formData, 'Project Phase': e.target.value })}
                 required
@@ -126,18 +131,18 @@ export function LessonNew() {
             </Field>
           </div>
 
-          <Field label="Root Cause" required>
+          <Field label="Event Description" required>
             <TextArea
-              value={formData['Root Cause']}
-              onChange={(e) => setFormData({ ...formData, 'Root Cause': e.target.value })}
+              value={formData['Event Description']}
+              onChange={(e) => setFormData({ ...formData, 'Event Description': e.target.value })}
               required
             />
           </Field>
 
-          <Field label="What Happened" required>
+          <Field label="Root Cause" required>
             <TextArea
-              value={formData['What Happened']}
-              onChange={(e) => setFormData({ ...formData, 'What Happened': e.target.value })}
+              value={formData['Root Cause']}
+              onChange={(e) => setFormData({ ...formData, 'Root Cause': e.target.value })}
               required
             />
           </Field>
@@ -168,23 +173,13 @@ export function LessonNew() {
             />
           </Field>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Field label="Recommendation Due Date">
-              <TextInput
-                type="date"
-                value={formData['Recommendation Due Date']}
-                onChange={(e) => setFormData({ ...formData, 'Recommendation Due Date': e.target.value })}
-              />
-            </Field>
-
-            <Field label="Owner" required>
-              <TextInput
-                value={formData.Owner}
-                onChange={(e) => setFormData({ ...formData, Owner: e.target.value })}
-                required
-              />
-            </Field>
-          </div>
+          <Field label="Owner" required>
+            <TextInput
+              value={formData.Owner}
+              onChange={(e) => setFormData({ ...formData, Owner: e.target.value })}
+              required
+            />
+          </Field>
 
           <Field label="Keywords (optional)">
             <TextInput

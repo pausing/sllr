@@ -4,22 +4,11 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 
+from tests.lesson_fixtures import lesson_body
+
 os.environ.setdefault("SLLR_BASE_PATH", "/sllr")
 
-SAMPLE = {
-    "Lesson ID": "LL-001",
-    "Title": "SQLite roundtrip lesson",
-    "Category": "Engineering",
-    "Technical Block": "PV",
-    "Sub-category": "Modules",
-    "Project Phase": "Construction",
-    "Root Cause": "Test root cause",
-    "What Happened": "Test what happened",
-    "Impact": "Test impact",
-    "Lesson Learned": "Test lesson learned",
-    "Recommendation": "Test recommendation",
-    "Owner": "Test Owner",
-}
+SAMPLE = lesson_body("LL-001", Title="SQLite roundtrip lesson")
 
 
 @pytest.fixture
@@ -128,12 +117,10 @@ def test_migrates_leftover_csv_once(tmp_path, monkeypatch):
         {
             "Lesson ID": "LL-009",
             "Title": "Legacy CSV row",
-            "Category": "Engineering",
             "Technical Block": "PV",
-            "Sub-category": "Modules",
             "Project Phase": "Construction",
             "Root Cause": "x",
-            "What Happened": "y",
+            "Event Description": "y",
             "Impact": "z",
             "Lesson Learned": "l",
             "Recommendation": "r",

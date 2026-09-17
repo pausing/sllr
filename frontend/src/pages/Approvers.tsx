@@ -148,8 +148,9 @@ export function Approvers() {
       <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-accent">Administration</p>
       <h1 className="mb-2 text-2xl font-bold text-text md:text-3xl">Approvers</h1>
       <p className="mb-8 max-w-2xl text-muted">
-        Assign one primary approver for each Technical Block. The selected person may set lessons
-        in that block from Draft to Approved. Choose from people who already have SLLR access.
+        Assign approvers for each Technical Block. If a block has no specific mapping, the{' '}
+        <strong>General</strong> approver is used as the default for that area. Portal admins can
+        always approve. Choose from people who already have SLLR access.
       </p>
 
       {error ? <p className="mb-4 text-sm text-danger">{error}</p> : null}
@@ -210,7 +211,9 @@ export function Approvers() {
       <section>
         <h2 className="mb-1 text-lg font-medium text-text">Technical Blocks</h2>
         <p className="mb-4 text-sm text-muted">
-          One card per block. Changing the dropdown replaces the approver(s) for that block.
+          One card per area, plus <strong>General</strong>. Changing the dropdown replaces the
+          approver(s) for that block. General applies only when a lesson’s Technical Block has zero
+          assignees — it is the fallback per area, not a second vote on mapped blocks.
         </p>
         {blocks.length === 0 ? (
           <Card>
@@ -232,7 +235,9 @@ export function Approvers() {
                   className="rounded-lg border border-line border-l-4 border-l-accent bg-panel p-4 md:p-6"
                 >
                   <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-                    <h3 className="font-mono text-lg font-medium text-accent">{row.technical_block}</h3>
+                    <h3 className="font-mono text-lg font-medium text-accent">
+                      {row.technical_block === 'General' ? 'General (default)' : row.technical_block}
+                    </h3>
                     {row.emails.length === 0 ? (
                       <span className="text-[11px] uppercase tracking-wide text-muted">No approver</span>
                     ) : (

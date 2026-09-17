@@ -8,6 +8,7 @@ from starlette.requests import Request
 os.environ.setdefault("SLLR_BASE_PATH", "/sllr")
 
 from backend.app.identity import can_edit_lesson, emails_match, normalize_email
+from tests.lesson_fixtures import lesson_body
 
 OWNER = {
     "X-Powerlearn-User-Id": "u-owner",
@@ -42,20 +43,7 @@ def _request(headers: dict[str, str]) -> Request:
 
 
 def _lesson_body(lesson_id: str, owner: str = "owner@powerlearn.us") -> dict:
-    return {
-        "Lesson ID": lesson_id,
-        "Title": f"Lesson {lesson_id}",
-        "Category": "Engineering",
-        "Technical Block": "PV",
-        "Sub-category": "Modules",
-        "Project Phase": "Construction",
-        "Root Cause": "Test root cause",
-        "What Happened": "Test what happened",
-        "Impact": "Test impact",
-        "Lesson Learned": "Test lesson learned",
-        "Recommendation": "Test recommendation",
-        "Owner": owner,
-    }
+    return lesson_body(lesson_id, owner=owner, Title=f"Lesson {lesson_id}")
 
 
 @pytest.fixture

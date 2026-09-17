@@ -4,6 +4,8 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 
+from tests.lesson_fixtures import APPROVE_ASSIGNMENT, lesson_body
+
 os.environ.setdefault("SLLR_BASE_PATH", "/sllr")
 
 ADMIN = {
@@ -21,23 +23,16 @@ OTHER_USER = {
     "X-Powerlearn-Email": "other@powerlearn.us",
     "X-Powerlearn-Admin": "false",
 }
+GENERAL_USER = {
+    "X-Powerlearn-User-Id": "u-general",
+    "X-Powerlearn-Email": "general.approver@powerlearn.us",
+    "X-Powerlearn-Admin": "false",
+}
 
 
 def _lesson(lesson_id: str, technical_block: str = "Civil") -> dict:
-    return {
-        "Lesson ID": lesson_id,
-        "Title": f"Lesson {lesson_id}",
-        "Category": "Engineering",
-        "Technical Block": technical_block,
-        "Sub-category": "Modules",
-        "Project Phase": "Construction",
-        "Root Cause": "Test root cause",
-        "What Happened": "Test what happened",
-        "Impact": "Test impact",
-        "Lesson Learned": "Test lesson learned",
-        "Recommendation": "Test recommendation",
-        "Owner": "Test Owner",
-    }
+    return lesson_body(lesson_id, technical_block=technical_block)
+
 
 
 @pytest.fixture
@@ -61,6 +56,7 @@ def test_admin_can_assign_approver_blocks(client):
     assert listed.status_code == 200
     assert listed.json()["approvers"] == []
     assert {row["technical_block"] for row in listed.json()["blocks"]} == {
+        "General",
         "Civil",
         "HV & Grid",
         "PV",
@@ -150,7 +146,7 @@ def test_non_admin_without_mapping_gets_403_on_approve(client):
     assert created.status_code == 201
     patch = client.patch(
         "/sllr/api/lessons/LL-401",
-        json={"Status": "Approved"},
+        json={"Status": "Approved", **APPROVE_ASSIGNMENT},
         headers=OTHER_USER,
     )
     assert patch.status_code == 403
@@ -159,7 +155,7 @@ def test_non_admin_without_mapping_gets_403_on_approve(client):
 
     put = client.put(
         "/sllr/api/lessons/LL-401",
-        json={"Status": "Approved"},
+        json={"Status": "Approved", **APPROVE_ASSIGNMENT},
         headers=OTHER_USER,
     )
     assert put.status_code == 403
@@ -176,7 +172,7 @@ def test_mapping_for_civil_can_approve_civil_not_pv(client):
 
     allowed = client.patch(
         "/sllr/api/lessons/LL-CIV",
-        json={"Status": "Approved"},
+        json={"Status": "Approved", **APPROVE_ASSIGNMENT},
         headers=CIVIL_USER,
     )
     assert allowed.status_code == 200, allowed.text
@@ -184,7 +180,7 @@ def test_mapping_for_civil_can_approve_civil_not_pv(client):
 
     denied = client.patch(
         "/sllr/api/lessons/LL-PV",
-        json={"Status": "Approved"},
+        json={"Status": "Approved", **APPROVE_ASSIGNMENT},
         headers=CIVIL_USER,
     )
     assert denied.status_code == 403
@@ -196,7 +192,7 @@ def test_admin_can_approve_without_mapping(client):
     assert client.post("/sllr/api/lessons", json=_lesson("LL-ADM", "BESS")).status_code == 201
     patch = client.patch(
         "/sllr/api/lessons/LL-ADM",
-        json={"Status": "Approved"},
+        json={"Status": "Approved", **APPROVE_ASSIGNMENT},
         headers=ADMIN,
     )
     assert patch.status_code == 200
@@ -229,6 +225,75 @@ def test_approve_ui_filter_logic():
     admin_visible = visible_lessons_for_approve(lessons, is_admin=True, allowed_blocks=[])
     assert [row["Lesson ID"] for row in admin_visible] == ["1", "2", "3"]
     assert can_change_status(is_admin=True, allowed_blocks=[], lesson=lessons[2])
+
+    general_visible = visible_lessons_for_approve(
+        lessons,
+        is_admin=False,
+        allowed_blocks=["General"],
+        empty_blocks=["PV"],
+    )
+    assert [row["Lesson ID"] for row in general_visible] == ["2"]
+    assert can_change_status(
+        is_admin=False,
+        allowed_blocks=["General"],
+        lesson=lessons[1],
+        empty_blocks=["PV"],
+    )
+    assert not can_change_status(
+        is_admin=False,
+        allowed_blocks=["General"],
+        lesson=lessons[0],
+        empty_blocks=["PV"],
+    )
+
+
+def test_approve_without_implementation_assignment_is_422(client):
+    assert client.post("/sllr/api/lessons", json=_lesson("LL-422", "PV")).status_code == 201
+    missing = client.patch(
+        "/sllr/api/lessons/LL-422",
+        json={"Status": "Approved"},
+        headers=ADMIN,
+    )
+    assert missing.status_code == 422
+    assert "Implementation Owner" in missing.json()["detail"]
+    assert client.get("/sllr/api/lessons/LL-422").json()["Status"] == "Draft"
+
+
+def test_general_approver_covers_unmapped_blocks_only(client):
+    client.put(
+        "/sllr/api/approvers/block",
+        json={"technical_block": "General", "email": "general.approver@powerlearn.us"},
+        headers=ADMIN,
+    )
+    client.put(
+        "/sllr/api/approvers/block",
+        json={"technical_block": "Civil", "email": "civil.approver@powerlearn.us"},
+        headers=ADMIN,
+    )
+    assert client.post("/sllr/api/lessons", json=_lesson("LL-GEN-PV", "PV")).status_code == 201
+    assert client.post("/sllr/api/lessons", json=_lesson("LL-GEN-CIV", "Civil")).status_code == 201
+
+    mine = client.get("/sllr/api/approvers/me", headers=GENERAL_USER).json()
+    assert mine["general"] is True
+    assert "PV" in mine["technical_blocks"]
+    assert "PV" in mine["fallback_blocks"]
+    assert "Civil" not in mine["fallback_blocks"]
+
+    allowed = client.patch(
+        "/sllr/api/lessons/LL-GEN-PV",
+        json={"Status": "Approved", **APPROVE_ASSIGNMENT},
+        headers=GENERAL_USER,
+    )
+    assert allowed.status_code == 200, allowed.text
+    assert allowed.json()["Implementation Owner"] == "impl.owner@powerlearn.us"
+    assert allowed.json()["Implementation Due Date"] == "2027-01-15"
+
+    denied = client.patch(
+        "/sllr/api/lessons/LL-GEN-CIV",
+        json={"Status": "Approved", **APPROVE_ASSIGNMENT},
+        headers=GENERAL_USER,
+    )
+    assert denied.status_code == 403
 
 
 def test_set_approver_by_block_replaces_mappings(client):

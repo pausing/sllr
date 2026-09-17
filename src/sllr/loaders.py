@@ -25,7 +25,7 @@ def load_reference(path: Path) -> list[str]:
 
 
 def load_all_references() -> dict[str, list[str]]:
-    """Load controlled vocab: live SQLite for categories/blocks/phases, CSV for the rest."""
+    """Load controlled vocab: live SQLite for blocks/phases, CSV for the rest."""
     out = {}
     for name, path in REFERENCE_FILES.items():
         out[name] = load_reference(path)

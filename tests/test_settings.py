@@ -38,13 +38,7 @@ def test_vocab_seeded_from_csv_on_empty_db(client):
     refs = client.get("/sllr/api/references")
     assert refs.status_code == 200
     body = refs.json()
-    assert body["categories"] == [
-        "Development",
-        "Engineering",
-        "Procurement",
-        "Construction",
-        "O&M",
-    ]
+    assert "categories" not in body
     assert body["technical_blocks"] == ["Civil", "HV & Grid", "PV", "BESS"]
     assert body["phases"] == ["Development", "Pre-Execution", "Construction", "O&M"]
     assert "Draft" in body["statuses"]
@@ -59,56 +53,25 @@ def test_non_admin_cannot_manage_vocab(client):
     assert client.get("/sllr/api/settings/vocab", headers=USER).status_code == 403
     assert client.get("/sllr/api/settings/vocab").status_code == 403
     denied = client.post(
-        "/sllr/api/settings/vocab/categories",
+        "/sllr/api/settings/vocab/technical_blocks",
         json={"code": "HSE"},
         headers=USER,
     )
     assert denied.status_code == 403
 
 
-def test_category_crud_updates_live_references(client):
+def test_categories_vocab_removed(client):
+    assert client.get("/sllr/api/settings/vocab/categories", headers=ADMIN).status_code == 404
     created = client.post(
         "/sllr/api/settings/vocab/categories",
         json={"code": "HSE", "label": "Health & Safety"},
         headers=ADMIN,
     )
-    assert created.status_code == 201, created.text
-    assert created.json()["code"] == "HSE"
-    assert created.json()["label"] == "Health & Safety"
-
-    refs = client.get("/sllr/api/references").json()
-    assert "HSE" in refs["categories"]
-
-    dual = client.post(
-        "/api/settings/vocab/categories",
-        json={"code": "HSE"},
-        headers=ADMIN,
-    )
-    assert dual.status_code == 409
-
-    renamed = client.patch(
-        "/sllr/api/settings/vocab/categories/HSE",
-        json={"code": "HSSE", "label": "HSSE"},
-        headers=ADMIN,
-    )
-    assert renamed.status_code == 200
-    assert renamed.json()["code"] == "HSSE"
-    refs = client.get("/sllr/api/references").json()
-    assert "HSE" not in refs["categories"]
-    assert "HSSE" in refs["categories"]
-
-    deactivated = client.patch(
-        "/sllr/api/settings/vocab/categories/HSSE",
-        json={"active": False},
-        headers=ADMIN,
-    )
-    assert deactivated.status_code == 200
-    assert "HSSE" not in client.get("/sllr/api/references").json()["categories"]
-
-    deleted = client.delete("/sllr/api/settings/vocab/categories/HSSE", headers=ADMIN)
-    assert deleted.status_code == 200
-    remaining = [item["code"] for item in client.get("/sllr/api/settings/vocab", headers=ADMIN).json()["categories"]]
-    assert "HSSE" not in remaining
+    assert created.status_code == 404
+    vocab = client.get("/sllr/api/settings/vocab", headers=ADMIN).json()
+    assert "categories" not in vocab
+    assert "technical_blocks" in vocab
+    assert "phases" in vocab
 
 
 def test_phase_order_is_preserved(client):
