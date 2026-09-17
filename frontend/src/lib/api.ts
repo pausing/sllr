@@ -105,6 +105,13 @@ export interface KPIs {
 }
 
 export const api = {
+  async getPendingApprovalCount(): Promise<number> {
+    const res = await fetch(`${API_BASE}/approvals/pending-count`)
+    if (!res.ok) throw new Error('Failed to fetch pending approval count')
+    const data = await res.json()
+    return typeof data?.count === 'number' ? data.count : 0
+  },
+
   async getMe(): Promise<PortalMe> {
     const res = await fetch(`${API_BASE}/me`)
     if (!res.ok) throw new Error('Failed to fetch current user')

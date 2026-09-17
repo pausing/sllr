@@ -77,6 +77,7 @@ export function Layout() {
   const location = useLocation()
   const [me, setMe] = useState<PortalMe | null>(null)
   const [navOpen, setNavOpen] = useState(false)
+  const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -93,6 +94,32 @@ export function Layout() {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    const loadPending = () => {
+      api
+        .getPendingApprovalCount()
+        .then((count) => {
+          if (!cancelled) setPendingCount(count > 0 ? count : 0)
+        })
+        .catch(() => {
+          if (!cancelled) setPendingCount(0)
+        })
+    }
+    loadPending()
+    const onFocus = () => loadPending()
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') loadPending()
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      cancelled = true
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [location.pathname])
 
   useEffect(() => {
     setNavOpen(false)
@@ -147,14 +174,25 @@ export function Layout() {
           </a>
         </div>
         {email ? (
-          <p className="min-w-0 max-w-[50%] truncate text-right text-[13px] text-muted">
-            Hello, <span className="text-text">{email}</span>
-            {isAdmin ? (
-              <span className="ml-2 inline-block align-middle rounded border border-line px-1 py-px text-[9px] uppercase tracking-wide text-muted">
-                admin
-              </span>
+          <div className="flex min-w-0 max-w-[70%] items-center justify-end gap-2 md:max-w-[50%]">
+            <p className="min-w-0 truncate text-right text-[13px] text-muted">
+              Hello, <span className="text-text">{email}</span>
+              {isAdmin ? (
+                <span className="ml-2 inline-block align-middle rounded border border-line px-1 py-px text-[9px] uppercase tracking-wide text-muted">
+                  admin
+                </span>
+              ) : null}
+            </p>
+            {pendingCount > 0 ? (
+              <Link
+                to="/approve"
+                className="inline-flex shrink-0 items-center rounded-full border border-accent/50 bg-accent-dim px-2 py-0.5 text-[11px] font-medium text-accent hover:bg-accent/15"
+                title="Open Approve"
+              >
+                {pendingCount === 1 ? '1 to approve' : `${pendingCount} to approve`}
+              </Link>
             ) : null}
-          </p>
+          </div>
         ) : null}
       </header>
 
