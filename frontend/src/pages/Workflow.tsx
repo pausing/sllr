@@ -61,7 +61,7 @@ export function Workflow() {
   if (loading && !refs) return <div className="text-muted">Loading...</div>
 
   return (
-    <div className="workflow-canvas -m-4 flex min-h-[calc(100vh-2.75rem)] flex-col p-4 md:-m-8 md:p-8">
+    <div className="workflow-canvas -m-4 flex min-h-[calc(100vh-2.75rem)] flex-col overflow-visible p-4 md:-m-8 md:p-8">
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-text md:text-3xl">Workflow</h1>
@@ -161,30 +161,37 @@ export function Workflow() {
           <p className="text-muted">No lessons match these filters.</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-4 md:overflow-x-auto md:pb-2">
-          {lanes.map((lane) => (
-            <section
-              key={lane.block}
-              className="flex w-full shrink-0 flex-col md:w-[18.5rem]"
-              aria-label={`${lane.block} technical block`}
-            >
-              <header className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-line/80 bg-panel/70 px-3 py-2">
-                <h2 className="truncate text-sm font-semibold text-text">{lane.block}</h2>
-                <span className="shrink-0 rounded-full border border-line px-2 py-0.5 font-mono text-[11px] text-muted">
-                  {lane.lessons.length}
-                </span>
-              </header>
-              <div className="flex flex-col gap-3">
-                {lane.lessons.length === 0 ? (
-                  <p className="rounded-xl border border-dashed border-line/80 px-3 py-6 text-center text-sm text-muted">
-                    No cards
-                  </p>
-                ) : (
-                  lane.lessons.map((lesson) => <WorkflowCard key={lesson['Lesson ID']} lesson={lesson} />)
-                )}
-              </div>
-            </section>
-          ))}
+        <div className="flex flex-col gap-5 md:flex-row md:flex-wrap md:items-start md:gap-3">
+          {lanes.map((lane) => {
+            const empty = lane.lessons.length === 0
+            return (
+              <section
+                key={lane.block}
+                className={
+                  empty
+                    ? 'flex w-full flex-col md:w-36'
+                    : 'flex w-full min-w-0 flex-col md:w-[17.5rem]'
+                }
+                aria-label={`${lane.block} technical block`}
+              >
+                <header className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-line/80 bg-panel/70 px-3 py-2">
+                  <h2 className="truncate text-sm font-semibold text-text" title={lane.block}>
+                    {lane.block}
+                  </h2>
+                  <span className="shrink-0 rounded-full border border-line px-2 py-0.5 font-mono text-[11px] text-muted">
+                    {lane.lessons.length}
+                  </span>
+                </header>
+                <div className="flex flex-col gap-3">
+                  {empty ? (
+                    <p className="px-1 py-1 text-xs text-muted">No cards</p>
+                  ) : (
+                    lane.lessons.map((lesson) => <WorkflowCard key={lesson['Lesson ID']} lesson={lesson} />)
+                  )}
+                </div>
+              </section>
+            )
+          })}
         </div>
       )}
     </div>
