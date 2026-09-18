@@ -10,12 +10,14 @@ import { Settings } from './pages/Settings'
 import { Activity } from './pages/Activity'
 import { Implementation } from './pages/Implementation'
 import { Report } from './pages/Report'
+import { Workflow } from './pages/Workflow'
 
 function App() {
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
         <Route index element={<Dashboard />} />
+        <Route path="workflow" element={<Workflow />} />
         <Route path="lessons" element={<Lessons />} />
         <Route path="lessons/new" element={<LessonNew />} />
         <Route path="lessons/:id" element={<LessonEdit />} />
