@@ -7,6 +7,7 @@ const PORTAL_URL = 'https://portal.powerlearn.us/'
 const NAV_ITEMS: { path: string; label: string; adminOnly?: boolean }[] = [
   { path: '/', label: 'Dashboard' },
   { path: '/lessons', label: 'Browse Lessons' },
+  { path: '/workflow', label: 'Workflow' },
   { path: '/lessons/new', label: 'Add Lesson' },
   { path: '/approve', label: 'Approve' },
   { path: '/approvers', label: 'Approvers', adminOnly: true },

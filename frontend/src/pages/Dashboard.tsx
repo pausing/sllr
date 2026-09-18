@@ -29,6 +29,9 @@ export function Dashboard() {
           <Link to="/lessons">
             <Button variant="default">Browse lessons learned</Button>
           </Link>
+          <Link to="/workflow">
+            <Button variant="default">Workflow board</Button>
+          </Link>
         </div>
       </div>
 

@@ -12,6 +12,7 @@
   --color-text: #e8eaef;
   --color-accent: #3dcc8c;
   --color-accent-dim: #1b3d2f;
+  --color-sky: #6b9bff;
   --color-amber: #e8a838;
   --color-warn: #e08a3c;
   --color-danger: #e05a5a;
@@ -50,6 +51,12 @@ textarea {
 
 ::selection {
   background: #3dcc8c44;
+}
+
+.workflow-canvas {
+  background-color: var(--color-ink);
+  background-image: radial-gradient(rgba(232, 234, 239, 0.08) 1px, transparent 1.2px);
+  background-size: 16px 16px;
 }
 
 @media print {
