@@ -38,22 +38,22 @@ export const BOARD_STAGE_CLASSES: Record<
   { border: string; glow: string; chip: string; pip: string; bar: string }
 > = {
   Draft: {
-    border: 'border-amber/70',
-    glow: 'shadow-[0_0_0_1px_rgba(232,168,56,0.18)]',
+    border: 'border-amber/35 border-l-amber',
+    glow: 'shadow-[0_0_0_1px_rgba(232,168,56,0.16)]',
     chip: 'border-amber/50 bg-amber/15 text-amber',
     pip: 'bg-amber',
     bar: 'bg-amber',
   },
   Approved: {
-    border: 'border-accent/80',
-    glow: 'shadow-[0_0_0_1px_rgba(61,204,140,0.22)]',
+    border: 'border-accent/40 border-l-accent',
+    glow: 'shadow-[0_0_0_1px_rgba(61,204,140,0.2)]',
     chip: 'border-accent/50 bg-accent-dim text-accent',
     pip: 'bg-accent',
     bar: 'bg-accent',
   },
   Implemented: {
-    border: 'border-sky/70',
-    glow: 'shadow-[0_0_0_1px_rgba(107,155,255,0.2)]',
+    border: 'border-sky/40 border-l-sky',
+    glow: 'shadow-[0_0_0_1px_rgba(107,155,255,0.18)]',
     chip: 'border-sky/50 bg-sky/15 text-sky',
     pip: 'bg-sky',
     bar: 'bg-sky',

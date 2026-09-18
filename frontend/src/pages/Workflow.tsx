@@ -62,15 +62,14 @@ export function Workflow() {
 
   return (
     <div className="workflow-canvas -m-4 flex min-h-[calc(100vh-2.75rem)] flex-col p-4 md:-m-8 md:p-8">
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-text md:text-3xl">Workflow</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted">
-            Status board of lessons by Technical Block. Cards use the same records as Browse; click a
-            card to open View.
+          <p className="mt-1 text-sm text-muted">
+            Status board by Technical Block. Same lessons as Browse — click a card to open View.
           </p>
         </div>
-        <p className="text-sm text-muted">
+        <p className="shrink-0 text-sm text-muted">
           {visible.length} of {lessons.length} lessons
         </p>
       </div>
@@ -80,7 +79,7 @@ export function Workflow() {
         className="mb-4 rounded-xl border border-line/80 bg-panel/80 px-3 py-3 backdrop-blur-sm"
       >
         <h2 className="mb-2 text-[11px] font-medium uppercase tracking-[0.16em] text-muted">Legend</h2>
-        <ul className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-x-6 sm:gap-y-2">
+        <ul className="grid grid-cols-1 gap-2 md:grid-cols-3">
           {BOARD_STAGE_LEGEND.map((item) => (
             <li key={item.stage} className="flex min-w-0 items-start gap-2 text-sm">
               <span
@@ -89,9 +88,8 @@ export function Workflow() {
               />
               <span>
                 <span className="font-medium text-text">{item.stage}</span>
-                <span className="text-muted">
-                  {' '}
-                  — {item.meaning} ({item.token} {item.color})
+                <span className="block text-xs text-muted">
+                  {item.meaning}. Token {item.token} {item.color}
                 </span>
               </span>
             </li>
@@ -204,7 +202,7 @@ function WorkflowCard({ lesson }: { lesson: Lesson }) {
   return (
     <Link
       to={lessonPath(id)}
-      className={`group block rounded-xl border bg-raised/95 p-3 transition-colors hover:bg-raised focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${chrome.border} ${chrome.glow}`}
+      className={`group block rounded-xl border border-l-[3px] bg-raised/95 p-3 transition-colors hover:bg-raised focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${chrome.border} ${chrome.glow}`}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <span className="rounded-md border border-line/80 bg-panel/80 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted">

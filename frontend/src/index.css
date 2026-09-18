@@ -54,9 +54,9 @@ textarea {
 }
 
 .workflow-canvas {
-  background-color: var(--color-ink);
-  background-image: radial-gradient(rgba(232, 234, 239, 0.08) 1px, transparent 1.2px);
-  background-size: 16px 16px;
+  background-color: #0b0d12;
+  background-image: radial-gradient(circle, #3a4356 1.15px, transparent 1.2px);
+  background-size: 18px 18px;
 }
 
 @media print {
