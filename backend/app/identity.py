@@ -67,6 +67,38 @@ def require_lesson_editor(request: Request, owner: Optional[str]) -> dict[str, A
     )
 
 
+def owner_may_delete_lesson(lesson: Optional[dict[str, Any]]) -> bool:
+    """Owner may delete only while the lesson is still a Draft (not Approved/implemented)."""
+    if not lesson:
+        return False
+    status = str(lesson.get("Status") or "").strip()
+    impl = str(lesson.get("Implementation Status") or "").strip()
+    return status == "Draft" and impl != "Implemented"
+
+
+def can_delete_lesson(request: Request, lesson: Optional[dict[str, Any]]) -> bool:
+    """Portal admin can delete any lesson; owner can delete their own Draft only."""
+    if is_portal_admin(request):
+        return True
+    owner = lesson.get("Owner") if lesson else None
+    if not emails_match(portal_identity(request).get("email"), owner):
+        return False
+    return owner_may_delete_lesson(lesson)
+
+
+def require_lesson_deleter(request: Request, lesson: Optional[dict[str, Any]]) -> dict[str, Any]:
+    ident = portal_identity(request)
+    if can_delete_lesson(request, lesson):
+        return ident
+    raise HTTPException(
+        status_code=403,
+        detail=(
+            "Only a portal admin can delete this lesson, "
+            "or the owner while it is still a draft."
+        ),
+    )
+
+
 def require_portal_admin(request: Request, detail: str | None = None) -> dict[str, Any]:
     ident = portal_identity(request)
     if ident["admin"] is not True:

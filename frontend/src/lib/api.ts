@@ -188,6 +188,16 @@ export const api = {
     return res.json()
   },
 
+  async deleteLesson(id: string): Promise<Lesson> {
+    const res = await fetch(`${API_BASE}/lessons/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    })
+    if (!res.ok) {
+      throw new Error(await readApiError(res, 'Failed to delete lesson'))
+    }
+    return res.json()
+  },
+
   async patchLesson(id: string, patch: Partial<Lesson>): Promise<Lesson> {
     const res = await fetch(`${API_BASE}/lessons/${encodeURIComponent(id)}`, {
       method: 'PATCH',

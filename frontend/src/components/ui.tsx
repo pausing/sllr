@@ -171,6 +171,73 @@ export function Card({ children, className = '' }: CardProps) {
   )
 }
 
+interface ConfirmDialogProps {
+  open: boolean
+  title: string
+  children: ReactNode
+  confirmLabel?: string
+  cancelLabel?: string
+  busy?: boolean
+  error?: string
+  onConfirm: () => void
+  onCancel: () => void
+}
+
+export function ConfirmDialog({
+  open,
+  title,
+  children,
+  confirmLabel = 'Delete',
+  cancelLabel = 'Cancel',
+  busy = false,
+  error,
+  onConfirm,
+  onCancel,
+}: ConfirmDialogProps) {
+  useEffect(() => {
+    if (!open) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !busy) onCancel()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, busy, onCancel])
+
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center p-4 sm:items-center">
+      <button
+        type="button"
+        className="absolute inset-0 border-0 bg-[#0c0e12]/70 p-0"
+        aria-label="Close dialog"
+        disabled={busy}
+        onClick={onCancel}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-dialog-title"
+        className="relative z-10 w-full max-w-md rounded-lg border border-line bg-panel p-4 shadow-xl sm:p-6"
+      >
+        <h2 id="confirm-dialog-title" className="text-lg font-semibold text-text">
+          {title}
+        </h2>
+        <div className="mt-3 text-sm leading-relaxed text-muted">{children}</div>
+        {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button type="button" variant="ghost" disabled={busy} onClick={onCancel} className="w-full sm:w-auto">
+            {cancelLabel}
+          </Button>
+          <Button type="button" variant="danger" disabled={busy} onClick={onConfirm} className="w-full sm:w-auto">
+            {busy ? 'Deleting…' : confirmLabel}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 interface StatusDotProps {
   status: string
 }

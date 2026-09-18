@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from backend.app.activity import changed_values, lesson_write_action, log_activity
 from backend.app.approval import enforce_approval_if_needed, enforce_implementation_on_approve
 from backend.app.storage import (
+    delete_lesson_row,
     find_lesson_by_id,
     insert_lesson,
     lesson_id_exists,
@@ -17,7 +18,7 @@ from backend.app.storage import (
     suggest_next_id,
     update_lesson_row,
 )
-from backend.app.identity import require_lesson_editor, resolve_owner
+from backend.app.identity import require_lesson_deleter, require_lesson_editor, resolve_owner
 from src.sllr.loaders import load_all_references
 from src.sllr.validation import validate_lesson
 
@@ -297,3 +298,33 @@ async def patch_lesson(lesson_id: str, patch: LessonPatch, request: Request):
         values={"before": existing, "after": patched, "changed": changed_values(existing, patched)},
     )
     return patched
+
+
+@router.delete("/lessons/{lesson_id}")
+async def delete_lesson(lesson_id: str, request: Request):
+    """
+    Permanently delete a lesson from SQLite.
+    Portal admin: any lesson. Owner: own lesson while still Draft.
+    """
+    existing = find_lesson_by_id(lesson_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Lesson {lesson_id} not found")
+
+    require_lesson_deleter(request, existing)
+
+    removed = delete_lesson_row(lesson_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail=f"Lesson {lesson_id} not found")
+
+    log_activity(
+        request,
+        "delete_lesson",
+        entity_type="lesson",
+        entity_id=lesson_id,
+        values={
+            "before": existing,
+            "lesson_id": existing.get("Lesson ID"),
+            "title": existing.get("Title"),
+        },
+    )
+    return existing

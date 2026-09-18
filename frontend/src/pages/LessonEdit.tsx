@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { DeleteLessonButton } from '../components/DeleteLessonButton'
 import { LessonForm } from '../components/LessonForm'
 import { Button, Card, StatusDot } from '../components/ui'
 import { api, Lesson, PortalMe, References } from '../lib/api'
-import { canEditLesson } from '../lib/lessonAccess'
+import { canDeleteLesson, canEditLesson } from '../lib/lessonAccess'
 
 function displayValue(value?: string | null): string {
   const text = (value ?? '').trim()
@@ -36,6 +37,7 @@ export function LessonEdit() {
     /* keep raw id if it is not valid percent-encoding */
   }
   const allowedToEdit = canEditLesson(me, lesson?.Owner)
+  const allowedToDelete = canDeleteLesson(me, lesson)
   const wantEdit = searchParams.get('edit') === '1'
   const editing = allowedToEdit && wantEdit
 
@@ -97,10 +99,15 @@ export function LessonEdit() {
             <p className="mt-1 font-mono text-sm text-muted">{lesson['Lesson ID']}</p>
           ) : null}
         </div>
-        {allowedToEdit && !editing ? (
-          <Button variant="primary" className="shrink-0" onClick={() => setEditing(true)}>
-            Edit
-          </Button>
+        {allowedToEdit || allowedToDelete ? (
+          <div className="flex flex-wrap gap-2 sm:shrink-0">
+            {allowedToEdit && !editing ? (
+              <Button variant="primary" onClick={() => setEditing(true)}>
+                Edit
+              </Button>
+            ) : null}
+            {allowedToDelete ? <DeleteLessonButton lesson={lesson} /> : null}
+          </div>
         ) : null}
       </div>
 

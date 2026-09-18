@@ -271,6 +271,15 @@ def update_lesson_row(lesson_id: str, row: dict[str, Any]) -> None:
         conn.commit()
 
 
+def delete_lesson_row(lesson_id: str) -> bool:
+    """Hard-delete one lesson. Returns True if a row was removed."""
+    init_store()
+    with _lock, _connect() as conn:
+        cur = conn.execute('DELETE FROM lessons WHERE "Lesson ID" = ?', (lesson_id,))
+        conn.commit()
+        return cur.rowcount > 0
+
+
 def replace_lessons(rows: list[dict[str, Any]]) -> None:
     """Replace the live table (used by CSV import)."""
     init_store()
