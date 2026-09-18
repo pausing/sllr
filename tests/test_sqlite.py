@@ -73,6 +73,23 @@ def test_create_roundtrip_and_kpi_total(sqlite_client):
     assert compute_kpis()["total_lessons"] == 1
 
 
+def test_hard_delete_removes_sqlite_row(sqlite_client):
+    client, _ = sqlite_client
+    assert client.post("/sllr/api/lessons", json=SAMPLE, headers={
+        "X-Powerlearn-User-Id": "u-admin",
+        "X-Powerlearn-Email": "admin@powerlearn.us",
+        "X-Powerlearn-Admin": "true",
+    }).status_code == 201
+    from src.sllr.kpi import compute_kpis
+    from src.sllr.store import delete_lesson_row, find_lesson_by_id
+
+    assert find_lesson_by_id("LL-001") is not None
+    assert delete_lesson_row("LL-001") is True
+    assert find_lesson_by_id("LL-001") is None
+    assert delete_lesson_row("LL-001") is False
+    assert compute_kpis()["total_lessons"] == 0
+
+
 def test_csv_export_import_roundtrip(sqlite_client):
     client, _ = sqlite_client
     assert client.post("/sllr/api/lessons", json=SAMPLE).status_code == 201

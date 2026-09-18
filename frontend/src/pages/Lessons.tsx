@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router'
-import { api, Lesson, PortalMe, References } from '../lib/api'
-import { canEditLesson, lessonPath } from '../lib/lessonAccess'
-import { lessonMatchesQuery } from '../lib/lessonSearch'
+import { Link, useLocation } from 'react-router'
+import { DeleteLessonButton, deletedLessonNotice } from '../components/DeleteLessonButton'
 import { Card, Button, Select, StatusDot, TextInput } from '../components/ui'
+import { api, Lesson, PortalMe, References } from '../lib/api'
+import { canDeleteLesson, canEditLesson, lessonPath } from '../lib/lessonAccess'
+import { lessonMatchesQuery } from '../lib/lessonSearch'
 
 export function Lessons() {
+  const location = useLocation()
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [refs, setRefs] = useState<References | null>(null)
   const [me, setMe] = useState<PortalMe | null>(null)
+  const [notice, setNotice] = useState('')
   const [filters, setFilters] = useState({
     technical_block: '',
     phase: '',
@@ -16,6 +19,11 @@ export function Lessons() {
   })
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const state = location.state as { notice?: string } | null
+    if (state?.notice) setNotice(state.notice)
+  }, [location.state])
 
   useEffect(() => {
     Promise.all([api.getReferences(), api.getLessons(), api.getMe().catch(() => null)])
@@ -52,6 +60,12 @@ export function Lessons() {
           <Button variant="primary">Add New Lesson</Button>
         </Link>
       </div>
+
+      {notice ? (
+        <div className="mb-4 rounded-md border border-accent/40 bg-accent-dim px-3 py-2 text-sm text-text" role="status">
+          {notice}
+        </div>
+      ) : null}
 
       <Card className="mb-6">
         <h3 className="text-lg font-medium text-text mb-4">Filters</h3>
@@ -110,6 +124,7 @@ export function Lessons() {
             const id = lesson['Lesson ID']
             const href = lessonPath(id)
             const showEdit = canEditLesson(me, lesson.Owner)
+            const showDelete = canDeleteLesson(me, lesson)
             return (
               <Card key={id} className="hover:border-accent transition-colors">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -136,6 +151,17 @@ export function Lessons() {
                       <Link to={lessonPath(id, true)}>
                         <Button variant="ghost">Edit</Button>
                       </Link>
+                    ) : null}
+                    {showDelete ? (
+                      <DeleteLessonButton
+                        lesson={lesson}
+                        onDeleted={(removed) => {
+                          setLessons((current) =>
+                            current.filter((row) => row['Lesson ID'] !== removed['Lesson ID']),
+                          )
+                          setNotice(deletedLessonNotice(removed))
+                        }}
+                      />
                     ) : null}
                   </div>
                 </div>
