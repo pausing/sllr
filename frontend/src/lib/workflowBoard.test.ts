@@ -61,6 +61,11 @@ export function runWorkflowBoardChecks(): void {
 
   const filtered = filterWorkflowLessons(lessons, { status: 'Approved', q: 'bess' })
   assert(filtered.length === 1 && filtered[0]['Lesson ID'] === 'LL-002', 'status + search')
+  assert(
+    filterWorkflowLessons(lessons, { status: 'Approved' }).every((row) => lessonBoardStage(row) === 'Approved'),
+    'approved filter excludes implemented',
+  )
+  assert(filterWorkflowLessons(lessons, { status: 'Implemented' }).length === 1, 'implemented filter')
   assert(filterWorkflowLessons(lessons, { technical_block: 'PV' }).length === 1, 'block filter')
   assert(filterWorkflowLessons(lessons, { phase: 'O&M' }).length === 0, 'phase miss')
 

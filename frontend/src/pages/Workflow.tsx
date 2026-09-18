@@ -136,8 +136,8 @@ export function Workflow() {
           <Select
             className="bg-panel/90"
             options={[
-              { value: '', label: 'All Statuses' },
-              ...(refs?.statuses ?? []).map((v) => ({ value: v, label: v })),
+              { value: '', label: 'All board statuses' },
+              ...BOARD_STAGES.map((v) => ({ value: v, label: v })),
             ]}
             value={status}
             onChange={(e) => setStatus(e.target.value)}

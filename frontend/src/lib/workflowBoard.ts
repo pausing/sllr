@@ -87,7 +87,13 @@ export function filterWorkflowLessons(
   const block = filters.technical_block?.trim() ?? ''
   const phase = filters.phase?.trim() ?? ''
   return lessons.filter((lesson) => {
-    if (status && (lesson.Status ?? '').trim() !== status) return false
+    if (status) {
+      if ((BOARD_STAGES as string[]).includes(status)) {
+        if (lessonBoardStage(lesson) !== status) return false
+      } else if ((lesson.Status ?? '').trim() !== status) {
+        return false
+      }
+    }
     if (block && lessonBlock(lesson) !== block) return false
     if (phase && (lesson['Project Phase'] ?? '').trim() !== phase) return false
     return lessonMatchesQuery(lesson, filters.q ?? '')
