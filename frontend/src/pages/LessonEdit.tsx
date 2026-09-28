@@ -143,6 +143,7 @@ export function LessonEdit() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <DetailField label="Technical Block" value={lesson['Technical Block']} />
               <DetailField label="Project Phase" value={lesson['Project Phase']} />
+              <DetailField label="Project" value={lesson.Project} />
             </div>
           </Card>
 

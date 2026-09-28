@@ -133,6 +133,16 @@ def test_create_lesson():
     assert created["Lesson ID"] == next_id
     assert created["Status"] == "Draft"
     assert created["Implementation Status"] == "Not Implemented"
+    assert created["Project"] == "Test Project"
+
+
+def test_create_lesson_requires_project():
+    """Project is required on create, same as Title / Event Description."""
+    next_id = client.get("/sllr/api/lessons/next-id").json()["suggested_id"]
+    lesson_data = lesson_body(next_id, Title="Missing Project")
+    lesson_data.pop("Project")
+    response = client.post("/sllr/api/lessons", json=lesson_data)
+    assert response.status_code == 422
 
 
 def test_create_lesson_owner_defaults_to_portal_email():

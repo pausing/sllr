@@ -166,3 +166,79 @@ def test_migrates_leftover_csv_once(tmp_path, monkeypatch):
     reset_init_cache()
     init_store()
     assert load_lessons() == []
+
+
+def test_migrates_project_column_on_existing_sqlite(tmp_path, monkeypatch):
+    """ALTER TABLE adds Project without dropping existing lesson rows."""
+    import sqlite3
+
+    from src.sllr.store import find_lesson_by_id, init_store, reset_init_cache
+
+    data_dir = tmp_path / "legacy_schema"
+    data_dir.mkdir()
+    db_path = data_dir / "lessons.db"
+    conn = sqlite3.connect(str(db_path))
+    conn.execute(
+        """
+        CREATE TABLE lessons (
+          "Lesson ID" TEXT PRIMARY KEY,
+          "Title" TEXT,
+          "Technical Block" TEXT,
+          "Project Phase" TEXT,
+          "Event Description" TEXT,
+          "Root Cause" TEXT,
+          "Impact" TEXT,
+          "Lesson Learned" TEXT,
+          "Recommendation" TEXT,
+          "Implementation Owner" TEXT,
+          "Implementation Due Date" TEXT,
+          "Keywords" TEXT,
+          "Status" TEXT,
+          "Implementation Status" TEXT,
+          "Owner" TEXT,
+          "Created Date" TEXT,
+          "Modified Date" TEXT
+        )
+        """
+    )
+    conn.execute(
+        """
+        INSERT INTO lessons (
+          "Lesson ID", "Title", "Technical Block", "Project Phase",
+          "Event Description", "Root Cause", "Impact", "Lesson Learned",
+          "Recommendation", "Status", "Implementation Status", "Owner"
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "LL-OLD",
+            "Legacy lesson",
+            "PV",
+            "Construction",
+            "event",
+            "cause",
+            "impact",
+            "learned",
+            "rec",
+            "Draft",
+            "Not Implemented",
+            "owner@powerlearn.us",
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+    monkeypatch.setenv("SLLR_DATA_DIR", str(data_dir))
+    reset_init_cache()
+    init_store()
+
+    with sqlite3.connect(str(db_path)) as migrated:
+        columns = {row[1] for row in migrated.execute("PRAGMA table_info(lessons)").fetchall()}
+    assert "Project" in columns
+    assert "Category" not in columns
+
+    lesson = find_lesson_by_id("LL-OLD")
+    assert lesson is not None
+    assert lesson["Lesson ID"] == "LL-OLD"
+    assert lesson["Title"] == "Legacy lesson"
+    assert lesson["Project"] == ""
+    assert "Category" not in lesson

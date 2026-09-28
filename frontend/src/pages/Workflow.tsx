@@ -229,6 +229,14 @@ function WorkflowCard({ lesson }: { lesson: Lesson }) {
         </span>
         <span aria-hidden="true">·</span>
         <span>{phase}</span>
+        {(lesson.Project ?? '').trim() ? (
+          <>
+            <span aria-hidden="true">·</span>
+            <span className="max-w-[11rem] truncate" title={lesson.Project}>
+              {lesson.Project.trim()}
+            </span>
+          </>
+        ) : null}
       </p>
       <StagePips stage={stage} />
     </Link>

@@ -5,6 +5,7 @@ export interface Lesson {
   Title: string
   'Technical Block': string
   'Project Phase': string
+  Project: string
   'Event Description': string
   'Root Cause': string
   Impact: string

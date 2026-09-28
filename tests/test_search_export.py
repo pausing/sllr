@@ -60,6 +60,13 @@ def test_search_matches_event_description_and_keywords(client):
     by_kw = client.get("/sllr/api/lessons", params={"q": "cable-tray"})
     assert [row["Lesson ID"] for row in by_kw.json()] == ["LL-S2"]
 
+    assert client.post(
+        "/sllr/api/lessons",
+        json=lesson_body("LL-S3", Title="Gamma", Project="Harbor Wind"),
+    ).status_code == 201
+    by_project = client.get("/sllr/api/lessons", params={"q": "Harbor Wind"})
+    assert [row["Lesson ID"] for row in by_project.json()] == ["LL-S3"]
+
 
 def test_html_export_filtered_ids(client):
     client.post("/sllr/api/lessons", json=lesson_body("LL-E1", Title="Keep me"))
@@ -69,6 +76,8 @@ def test_html_export_filtered_ids(client):
     assert "Keep me" in resp.text
     assert "Drop me" not in resp.text
     assert "Event Description" in resp.text
+    assert "Project" in resp.text
+    assert "Test Project" in resp.text
 
 
 def test_legacy_csv_what_happened_maps_to_event_description(client):

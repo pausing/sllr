@@ -14,6 +14,7 @@ function sample(overrides: Partial<Lesson> = {}): Lesson {
     Title: 'Cable tray clearance',
     'Technical Block': 'PV',
     'Project Phase': 'Construction',
+    Project: 'Site Alpha',
     'Event Description': 'inverter trip on site',
     'Root Cause': 'undersized conductor',
     Impact: 'Schedule',

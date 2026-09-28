@@ -32,6 +32,7 @@ class LessonCreate(BaseModel):
     title: str = Field(..., max_length=200, alias="Title")
     technical_block: str = Field(..., alias="Technical Block")
     project_phase: str = Field(..., alias="Project Phase")
+    project: str = Field(..., alias="Project")
     event_description: str = Field(..., alias="Event Description")
     root_cause: str = Field(..., alias="Root Cause")
     impact: str = Field(..., alias="Impact")
@@ -50,6 +51,7 @@ class LessonUpdate(BaseModel):
     title: Optional[str] = Field(None, max_length=200, alias="Title")
     technical_block: Optional[str] = Field(None, alias="Technical Block")
     project_phase: Optional[str] = Field(None, alias="Project Phase")
+    project: Optional[str] = Field(None, alias="Project")
     event_description: Optional[str] = Field(None, alias="Event Description")
     root_cause: Optional[str] = Field(None, alias="Root Cause")
     impact: Optional[str] = Field(None, alias="Impact")
@@ -74,6 +76,7 @@ class LessonPatch(BaseModel):
     title: Optional[str] = Field(None, alias="Title")
     technical_block: Optional[str] = Field(None, alias="Technical Block")
     project_phase: Optional[str] = Field(None, alias="Project Phase")
+    project: Optional[str] = Field(None, alias="Project")
     event_description: Optional[str] = Field(None, alias="Event Description")
     root_cause: Optional[str] = Field(None, alias="Root Cause")
     impact: Optional[str] = Field(None, alias="Impact")
@@ -117,6 +120,7 @@ def _apply_update_fields(target: dict[str, Any], payload: Dict[str, Any]) -> Non
         "title": "Title",
         "technical_block": "Technical Block",
         "project_phase": "Project Phase",
+        "project": "Project",
         "event_description": "Event Description",
         "root_cause": "Root Cause",
         "impact": "Impact",
@@ -196,6 +200,7 @@ async def create_lesson(lesson: LessonCreate, request: Request):
         "Title": lesson.title,
         "Technical Block": lesson.technical_block,
         "Project Phase": lesson.project_phase,
+        "Project": lesson.project,
         "Event Description": lesson.event_description,
         "Root Cause": lesson.root_cause,
         "Impact": lesson.impact,

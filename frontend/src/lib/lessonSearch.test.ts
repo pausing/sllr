@@ -7,6 +7,7 @@ function sample(): Lesson {
     Title: 'Cable tray clearance',
     'Technical Block': 'PV',
     'Project Phase': 'Construction',
+    Project: 'Site Alpha',
     'Event Description': 'inverter trip on site',
     'Root Cause': 'undersized conductor',
     Impact: 'Schedule',
@@ -25,6 +26,7 @@ function assert(condition: boolean, message: string): void {
 
 export function runLessonSearchChecks(): void {
   const lesson = sample()
+  assert(lessonMatchesQuery(lesson, 'Site Alpha'), 'project')
   assert(lessonMatchesQuery(lesson, 'inverter trip'), 'event description')
   assert(lessonMatchesQuery(lesson, 'undersized'), 'root cause')
   assert(lessonMatchesQuery(lesson, 'cable-tray'), 'keywords')

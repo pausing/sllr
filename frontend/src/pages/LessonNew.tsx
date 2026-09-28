@@ -22,6 +22,7 @@ export function LessonNew() {
     Title: '',
     'Technical Block': '',
     'Project Phase': '',
+    Project: '',
     'Event Description': '',
     'Root Cause': '',
     Impact: '',
@@ -120,6 +121,15 @@ export function LessonNew() {
                 />
               </Field>
             </div>
+
+            <Field label="Project" required>
+              <TextInput
+                name="project"
+                value={formData.Project}
+                onChange={(e) => setFormData({ ...formData, Project: e.target.value })}
+                required
+              />
+            </Field>
 
             <Field label="Event Description" required>
               <TextArea
