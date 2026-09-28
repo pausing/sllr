@@ -252,6 +252,7 @@ def build_html_string(
       const statusCls = statusClass(status);
       const fields = [
         ['Technical Block', lesson['Technical Block']],
+        ['Project', lesson['Project']],
         ['Event Description', lesson['Event Description'] || lesson['What Happened']],
         ['Root Cause', lesson['Root Cause']],
         ['Impact', lesson['Impact']],
@@ -274,7 +275,7 @@ def build_html_string(
             <div>
               <div class="card-id">${{id}}</div>
               <div class="card-title">${{title}}</div>
-              <div class="card-meta">${{phase}} · ${{techBlock}}</div>
+              <div class="card-meta">${{phase}} · ${{techBlock}}${{lesson['Project'] ? ` · ${{escapeHtml(lesson['Project'])}}` : ''}}</div>
               ${{status ? `<span class="badge ${{statusCls}}">${{escapeHtml(status)}}</span>` : ''}}
             </div>
           </div>

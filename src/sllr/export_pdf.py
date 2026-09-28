@@ -162,6 +162,9 @@ def build_pdf(
             tech_block = _escape(r.get("Technical Block") or "")
             story.append(Paragraph(f"<b>{lid}</b> {title_text}", body))
             story.append(Paragraph(f"Technical Block: {tech_block}", small))
+            project = _escape(r.get("Project") or "")
+            if project:
+                story.append(Paragraph(f"Project: {project}", small))
             story.append(
                 Paragraph(
                     f"<b>Event description:</b> {_escape(_event_description(r))}",

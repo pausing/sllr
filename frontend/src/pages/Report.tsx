@@ -213,6 +213,7 @@ export function Report() {
                 <dl className="mb-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                   <Meta label="Technical Block" value={lesson['Technical Block']} />
                   <Meta label="Phase" value={lesson['Project Phase']} />
+                  <Meta label="Project" value={lesson.Project} />
                   <Meta label="Owner" value={lesson.Owner} />
                   <Meta label="Implementation Owner" value={lesson['Implementation Owner']} />
                 </dl>

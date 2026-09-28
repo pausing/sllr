@@ -141,6 +141,12 @@ export function Lessons() {
                       <span>{lesson['Project Phase']}</span>
                       <span className="hidden sm:inline">•</span>
                       <span>{lesson['Technical Block']}</span>
+                      {lesson.Project ? (
+                        <>
+                          <span className="hidden sm:inline">•</span>
+                          <span>{lesson.Project}</span>
+                        </>
+                      ) : null}
                     </div>
                   </Link>
                   <div className="flex flex-wrap gap-2 sm:shrink-0">

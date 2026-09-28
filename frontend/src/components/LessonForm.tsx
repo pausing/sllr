@@ -71,6 +71,15 @@ export function LessonForm({
         </Field>
       </div>
 
+      <Field label="Project" required>
+        <TextInput
+          name="project"
+          value={lesson.Project || ''}
+          onChange={(e) => onChange({ ...lesson, Project: e.target.value })}
+          required
+        />
+      </Field>
+
       <Field label="Event Description" required>
         <TextArea
           value={lesson['Event Description']}

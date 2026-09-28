@@ -13,6 +13,7 @@ def lesson_body(
         "Title": f"Lesson {lesson_id}",
         "Technical Block": technical_block,
         "Project Phase": "Construction",
+        "Project": "Test Project",
         "Event Description": "Test event description",
         "Root Cause": "Test root cause",
         "Impact": "Test impact",

@@ -63,6 +63,7 @@ LESSON_SCHEMA = {
     "Title": {"required": True, "reference": None},
     "Technical Block": {"required": True, "reference": "technical_blocks"},
     "Project Phase": {"required": True, "reference": "phases"},
+    "Project": {"required": True, "reference": None},
     "Event Description": {"required": True, "reference": None},
     "Root Cause": {"required": True, "reference": None},
     "Impact": {"required": True, "reference": None},
