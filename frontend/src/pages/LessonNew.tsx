@@ -206,7 +206,7 @@ export function LessonNew() {
             <h2 className="mb-3 text-base font-semibold leading-snug text-text">
               {NEW_LESSON_INSTRUCTIONS_TITLE}
             </h2>
-            <div className="max-w-prose space-y-3 text-sm leading-relaxed text-muted">
+            <div className="max-w-prose space-y-3 text-justify text-sm leading-relaxed text-muted">
               {NEW_LESSON_INSTRUCTIONS_PARAGRAPHS.map((paragraph) => (
                 <p key={paragraph.slice(0, 40)}>{paragraph}</p>
               ))}
