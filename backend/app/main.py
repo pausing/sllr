@@ -17,6 +17,7 @@ from starlette.types import Scope
 from backend.app.routers import (
     activity,
     approvals,
+    attachments,
     lessons,
     references,
     kpis,
@@ -27,6 +28,7 @@ from backend.app.routers import (
     settings,
 )
 from backend.app.storage import init_store
+from src.sllr.attachments import configure_multipart_limits
 
 # Nixpacks/Nix images often have no /etc/mime.types. Without these, FileResponse
 # falls back to application/octet-stream and the browser refuses <script type="module">.
@@ -162,6 +164,7 @@ def create_app() -> FastAPI:
     )
     app.state.static_dir = static_dir
     app.state.base_path = base_path
+    configure_multipart_limits()
     init_store()
 
     app.add_middleware(
@@ -175,6 +178,7 @@ def create_app() -> FastAPI:
     for prefix in ["/api", f"{base_path}/api"] if base_path else ["/api"]:
         app.include_router(references.router, prefix=prefix, tags=["references"])
         app.include_router(lessons.router, prefix=prefix, tags=["lessons"])
+        app.include_router(attachments.router, prefix=prefix, tags=["attachments"])
         app.include_router(kpis.router, prefix=prefix, tags=["kpis"])
         app.include_router(reports.router, prefix=prefix, tags=["reports"])
         app.include_router(export_router.router, prefix=prefix, tags=["export"])

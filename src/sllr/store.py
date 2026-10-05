@@ -79,6 +79,24 @@ CREATE INDEX IF NOT EXISTS idx_activity_log_created_at
 ON activity_log (created_at DESC, id DESC)
 """
 
+_CREATE_ATTACHMENTS = """
+CREATE TABLE IF NOT EXISTS lesson_attachments (
+  id TEXT PRIMARY KEY,
+  lesson_id TEXT NOT NULL,
+  original_filename TEXT NOT NULL,
+  stored_name TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  content_type TEXT,
+  uploaded_at TEXT NOT NULL,
+  uploaded_by TEXT
+)
+"""
+
+_CREATE_ATTACHMENTS_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_lesson_attachments_lesson
+ON lesson_attachments (lesson_id)
+"""
+
 EDITABLE_VOCAB_KINDS = ("technical_blocks", "phases")
 
 _LESSON_FIELD_BY_KIND = {
@@ -206,6 +224,8 @@ def init_store() -> Path:
             conn.execute(_CREATE_VOCAB)
             conn.execute(_CREATE_ACTIVITY)
             conn.execute(_CREATE_ACTIVITY_INDEX)
+            conn.execute(_CREATE_ATTACHMENTS)
+            conn.execute(_CREATE_ATTACHMENTS_INDEX)
             _seed_vocab_if_empty(conn)
             if not already and _meta_get(conn, "csv_migrated") != "1":
                 csv_path = get_lessons_csv_path()
@@ -272,12 +292,18 @@ def update_lesson_row(lesson_id: str, row: dict[str, Any]) -> None:
 
 
 def delete_lesson_row(lesson_id: str) -> bool:
-    """Hard-delete one lesson. Returns True if a row was removed."""
+    """Hard-delete one lesson and its attachment files. Returns True if a row was removed."""
+    from .attachments import delete_lesson_attachment_files
+
     init_store()
     with _lock, _connect() as conn:
+        conn.execute("DELETE FROM lesson_attachments WHERE lesson_id = ?", (lesson_id,))
         cur = conn.execute('DELETE FROM lessons WHERE "Lesson ID" = ?', (lesson_id,))
         conn.commit()
-        return cur.rowcount > 0
+        removed = cur.rowcount > 0
+    if removed:
+        delete_lesson_attachment_files(lesson_id)
+    return removed
 
 
 def replace_lessons(rows: list[dict[str, Any]]) -> None:
@@ -863,3 +889,129 @@ def list_activity_log(
             }
         )
     return items, int(total)
+
+
+def _attachment_from_row(row: sqlite3.Row) -> dict[str, Any]:
+    return {
+        "id": row["id"],
+        "lesson_id": row["lesson_id"],
+        "filename": row["original_filename"],
+        "stored_name": row["stored_name"],
+        "size_bytes": int(row["size_bytes"] or 0),
+        "content_type": row["content_type"] or "application/octet-stream",
+        "uploaded_at": row["uploaded_at"] or "",
+        "uploaded_by": row["uploaded_by"] or "",
+    }
+
+
+def insert_attachment(row: dict[str, Any]) -> dict[str, Any]:
+    init_store()
+    with _lock, _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO lesson_attachments (
+              id, lesson_id, original_filename, stored_name, size_bytes, content_type, uploaded_at, uploaded_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                row["id"],
+                row["lesson_id"],
+                row["filename"],
+                row["stored_name"],
+                int(row["size_bytes"]),
+                row.get("content_type") or "application/octet-stream",
+                row["uploaded_at"],
+                row.get("uploaded_by") or "",
+            ),
+        )
+        conn.commit()
+    return find_attachment(row["id"]) or row
+
+
+def list_attachments(lesson_id: str) -> list[dict[str, Any]]:
+    init_store()
+    with _lock, _connect() as conn:
+        cur = conn.execute(
+            """
+            SELECT id, lesson_id, original_filename, stored_name, size_bytes, content_type, uploaded_at, uploaded_by
+            FROM lesson_attachments
+            WHERE lesson_id = ?
+            ORDER BY uploaded_at ASC, original_filename ASC
+            """,
+            (lesson_id,),
+        )
+        return [_attachment_from_row(r) for r in cur.fetchall()]
+
+
+def find_attachment(attachment_id: str, lesson_id: str | None = None) -> Optional[dict[str, Any]]:
+    init_store()
+    with _lock, _connect() as conn:
+        if lesson_id is None:
+            cur = conn.execute(
+                """
+                SELECT id, lesson_id, original_filename, stored_name, size_bytes, content_type, uploaded_at, uploaded_by
+                FROM lesson_attachments WHERE id = ?
+                """,
+                (attachment_id,),
+            )
+        else:
+            cur = conn.execute(
+                """
+                SELECT id, lesson_id, original_filename, stored_name, size_bytes, content_type, uploaded_at, uploaded_by
+                FROM lesson_attachments WHERE id = ? AND lesson_id = ?
+                """,
+                (attachment_id, lesson_id),
+            )
+        row = cur.fetchone()
+        return _attachment_from_row(row) if row else None
+
+
+def delete_attachment_row(attachment_id: str, lesson_id: str) -> Optional[dict[str, Any]]:
+    existing = find_attachment(attachment_id, lesson_id)
+    if not existing:
+        return None
+    init_store()
+    with _lock, _connect() as conn:
+        conn.execute(
+            "DELETE FROM lesson_attachments WHERE id = ? AND lesson_id = ?",
+            (attachment_id, lesson_id),
+        )
+        conn.commit()
+    return existing
+
+
+def attachment_storage_overview() -> dict[str, Any]:
+    """Totals plus per-lesson usage for portal admins."""
+    init_store()
+    with _lock, _connect() as conn:
+        totals = conn.execute(
+            "SELECT COUNT(*) AS n, COALESCE(SUM(size_bytes), 0) AS bytes FROM lesson_attachments"
+        ).fetchone()
+        cur = conn.execute(
+            """
+            SELECT
+              a.lesson_id AS lesson_id,
+              COALESCE(l."Title", '') AS title,
+              COUNT(*) AS file_count,
+              COALESCE(SUM(a.size_bytes), 0) AS bytes
+            FROM lesson_attachments a
+            LEFT JOIN lessons l ON l."Lesson ID" = a.lesson_id
+            GROUP BY a.lesson_id
+            ORDER BY bytes DESC, a.lesson_id ASC
+            """
+        )
+        lessons = [
+            {
+                "lesson_id": row["lesson_id"],
+                "title": row["title"] or "",
+                "file_count": int(row["file_count"] or 0),
+                "bytes": int(row["bytes"] or 0),
+            }
+            for row in cur.fetchall()
+        ]
+    return {
+        "total_files": int(totals["n"] or 0),
+        "total_bytes": int(totals["bytes"] or 0),
+        "lessons": lessons,
+    }
+

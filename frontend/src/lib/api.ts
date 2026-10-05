@@ -94,6 +94,33 @@ export interface ActivityPage {
   offset: number
 }
 
+export interface LessonAttachment {
+  id: string
+  filename: string
+  size_bytes: number
+  content_type: string
+  uploaded_at: string
+  uploaded_by: string
+}
+
+export interface AttachmentStorageLesson {
+  lesson_id: string
+  title: string
+  file_count: number
+  bytes: number
+}
+
+export interface AttachmentStorageOverview {
+  total_files: number
+  total_bytes: number
+  max_file_bytes: number
+  max_file_label: string
+  lessons: AttachmentStorageLesson[]
+}
+
+export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
+export const MAX_ATTACHMENT_LABEL = '10 MB'
+
 export interface KPIs {
   total_lessons: number
   repeated_issues_count: number
@@ -189,6 +216,50 @@ export const api = {
       throw new Error(await readApiError(res, 'Failed to update lesson'))
     }
     return res.json()
+  },
+
+  async getAttachments(lessonId: string): Promise<LessonAttachment[]> {
+    const res = await fetch(`${API_BASE}/lessons/${encodeURIComponent(lessonId)}/attachments`)
+    if (!res.ok) throw new Error(await readApiError(res, 'Failed to load attachments'))
+    const data = await res.json()
+    return Array.isArray(data?.attachments) ? data.attachments : []
+  },
+
+  attachmentDownloadUrl(lessonId: string, attachmentId: string): string {
+    return `${API_BASE}/lessons/${encodeURIComponent(lessonId)}/attachments/${encodeURIComponent(attachmentId)}`
+  },
+
+  async uploadAttachment(lessonId: string, file: File): Promise<LessonAttachment> {
+    const body = new FormData()
+    body.append('file', file)
+    const res = await fetch(`${API_BASE}/lessons/${encodeURIComponent(lessonId)}/attachments`, {
+      method: 'POST',
+      body,
+    })
+    if (!res.ok) throw new Error(await readApiError(res, 'Failed to upload attachment'))
+    return res.json()
+  },
+
+  async deleteAttachment(lessonId: string, attachmentId: string): Promise<LessonAttachment> {
+    const res = await fetch(
+      `${API_BASE}/lessons/${encodeURIComponent(lessonId)}/attachments/${encodeURIComponent(attachmentId)}`,
+      { method: 'DELETE' },
+    )
+    if (!res.ok) throw new Error(await readApiError(res, 'Failed to delete attachment'))
+    return res.json()
+  },
+
+  async getStorageOverview(): Promise<AttachmentStorageOverview> {
+    const res = await fetch(`${API_BASE}/settings/storage`)
+    if (!res.ok) throw new Error(await readApiError(res, 'Failed to fetch storage overview'))
+    const data = await res.json()
+    return {
+      total_files: typeof data?.total_files === 'number' ? data.total_files : 0,
+      total_bytes: typeof data?.total_bytes === 'number' ? data.total_bytes : 0,
+      max_file_bytes: typeof data?.max_file_bytes === 'number' ? data.max_file_bytes : MAX_ATTACHMENT_BYTES,
+      max_file_label: typeof data?.max_file_label === 'string' ? data.max_file_label : MAX_ATTACHMENT_LABEL,
+      lessons: Array.isArray(data?.lessons) ? data.lessons : [],
+    }
   },
 
   async deleteLesson(id: string): Promise<Lesson> {

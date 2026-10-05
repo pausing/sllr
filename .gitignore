@@ -47,3 +47,6 @@ Thumbs.db
 *.db
 *.db-wal
 *.db-shm
+
+# Uploaded lesson attachments (created at runtime)
+data/attachments/

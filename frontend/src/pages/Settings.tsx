@@ -1,8 +1,15 @@
 import { FormEvent, useEffect, useState } from 'react'
-import { api, PortalMe, VocabItem, VocabKind } from '../lib/api'
+import { Link } from 'react-router'
+import { api, AttachmentStorageOverview, PortalMe, VocabItem, VocabKind } from '../lib/api'
+import { formatBytes } from '../lib/formatBytes'
 import { Button, Card, TextInput } from '../components/ui'
 
-const TABS: { id: VocabKind; label: string; singular: string; help: string }[] = [
+const TABS: { id: VocabKind | 'storage'; label: string; singular?: string; help: string }[] = [
+  {
+    id: 'storage',
+    label: 'Storage',
+    help: 'Disk used by lesson attachments on the live data volume (same directory as SQLite). Maximum size: 10 MB per file.',
+  },
   {
     id: 'technical_blocks',
     label: 'Technical Blocks',
@@ -23,7 +30,8 @@ export function Settings() {
     technical_blocks: [],
     phases: [],
   })
-  const [tab, setTab] = useState<VocabKind>('technical_blocks')
+  const [tab, setTab] = useState<VocabKind | 'storage'>('storage')
+  const [storage, setStorage] = useState<AttachmentStorageOverview | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -37,7 +45,9 @@ export function Settings() {
     const user = await api.getMe()
     setMe(user)
     if (user?.admin !== true) return
-    setItems(await api.getVocab())
+    const [vocab, overview] = await Promise.all([api.getVocab(), api.getStorageOverview()])
+    setItems(vocab)
+    setStorage(overview)
   }
 
   useEffect(() => {
@@ -47,10 +57,11 @@ export function Settings() {
   }, [])
 
   const isAdmin = me?.admin === true
-  const current = items[tab]
+  const current = tab === 'storage' ? [] : items[tab]
 
   const handleAdd = async (event: FormEvent) => {
     event.preventDefault()
+    if (tab === 'storage') return
     const nextCode = code.trim()
     if (!nextCode) return
     setSaving(true)
@@ -74,6 +85,7 @@ export function Settings() {
   }
 
   const handleSaveEdit = async (original: string) => {
+    if (tab === 'storage') return
     setSaving(true)
     setError(null)
     try {
@@ -91,6 +103,7 @@ export function Settings() {
   }
 
   const handleToggle = async (item: VocabItem) => {
+    if (tab === 'storage') return
     setSaving(true)
     setError(null)
     try {
@@ -104,6 +117,7 @@ export function Settings() {
   }
 
   const handleDelete = async (item: VocabItem) => {
+    if (tab === 'storage') return
     if (!window.confirm(`Delete ${item.code}? Forms will no longer offer this value.`)) return
     setSaving(true)
     setError(null)
@@ -118,6 +132,7 @@ export function Settings() {
   }
 
   const move = async (index: number, direction: -1 | 1) => {
+    if (tab === 'storage') return
     const next = index + direction
     if (next < 0 || next >= current.length) return
     const codes = current.map((item) => item.code)
@@ -141,7 +156,7 @@ export function Settings() {
     return (
       <div>
         <h1 className="text-2xl font-bold text-text mb-2 md:text-3xl">Settings</h1>
-        <p className="text-muted">Portal admin required to edit vocabulary presets.</p>
+        <p className="text-muted">Portal admin required to manage settings.</p>
       </div>
     )
   }
@@ -153,7 +168,7 @@ export function Settings() {
       <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-accent">Administration</p>
       <h1 className="mb-2 text-2xl font-bold text-text md:text-3xl">Settings</h1>
       <p className="mb-8 max-w-2xl text-muted">
-        Manage the controlled vocabulary used on lesson forms and validation. Changes are stored
+        Manage attachment storage and the controlled vocabulary used on lesson forms. Changes are stored
         live (no image rebuild). Statuses stay as shipped defaults.
       </p>
 
@@ -179,136 +194,207 @@ export function Settings() {
         ))}
       </div>
 
+      {tab === 'storage' ? (
+        <StoragePanel storage={storage} />
+      ) : (
+        <>
+          <Card className="mb-6">
+            <h2 className="mb-1 text-lg font-medium text-text">Add {tabMeta.singular}</h2>
+            <p className="mb-4 text-sm text-muted">{tabMeta.help}</p>
+            <form onSubmit={handleAdd} className="flex flex-wrap items-end gap-3">
+              <div className="min-w-0 w-full flex-1 sm:min-w-40">
+                <label className="mb-1 block text-sm font-medium text-text" htmlFor="vocab-code">
+                  Code
+                </label>
+                <TextInput
+                  id="vocab-code"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="e.g. HSE"
+                  className="w-full"
+                />
+              </div>
+              <div className="min-w-0 w-full flex-1 sm:min-w-40">
+                <label className="mb-1 block text-sm font-medium text-text" htmlFor="vocab-label">
+                  Label
+                </label>
+                <TextInput
+                  id="vocab-label"
+                  value={label}
+                  onChange={(e) => setLabel(e.target.value)}
+                  placeholder="Display name (optional)"
+                  className="w-full"
+                />
+              </div>
+              <Button type="submit" variant="primary" disabled={saving || !code.trim()}>
+                Add
+              </Button>
+            </form>
+          </Card>
+
+          {current.length === 0 ? (
+            <Card>
+              <p className="text-muted">No values yet. Add a code above.</p>
+            </Card>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-line bg-panel">
+              <table className="w-full min-w-[36rem] text-sm">
+                <thead>
+                  <tr className="border-b border-line text-left text-muted">
+                    {tab === 'phases' ? <th className="px-4 py-3 font-medium w-24">Order</th> : null}
+                    <th className="px-4 py-3 font-medium">Code</th>
+                    <th className="px-4 py-3 font-medium">Label</th>
+                    <th className="px-4 py-3 font-medium">Status</th>
+                    <th className="px-4 py-3 font-medium text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {current.map((item, index) => (
+                    <tr key={item.code} className="border-b border-line last:border-0">
+                      {tab === 'phases' ? (
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="px-2 py-1"
+                              disabled={saving || index === 0}
+                              onClick={() => void move(index, -1)}
+                            >
+                              ↑
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="px-2 py-1"
+                              disabled={saving || index === current.length - 1}
+                              onClick={() => void move(index, 1)}
+                            >
+                              ↓
+                            </Button>
+                          </div>
+                        </td>
+                      ) : null}
+                      <td className="px-4 py-3 font-mono text-accent">
+                        {editing === item.code ? (
+                          <TextInput value={editCode} onChange={(e) => setEditCode(e.target.value)} />
+                        ) : (
+                          item.code
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-text">
+                        {editing === item.code ? (
+                          <TextInput value={editLabel} onChange={(e) => setEditLabel(e.target.value)} />
+                        ) : (
+                          item.label
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-muted">{item.active ? 'Active' : 'Inactive'}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap justify-end gap-2">
+                          {editing === item.code ? (
+                            <>
+                              <Button type="button" variant="primary" disabled={saving} onClick={() => void handleSaveEdit(item.code)}>
+                                Save
+                              </Button>
+                              <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
+                                Cancel
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button type="button" variant="ghost" disabled={saving} onClick={() => startEdit(item)}>
+                                Rename
+                              </Button>
+                              <Button type="button" variant="ghost" disabled={saving} onClick={() => void handleToggle(item)}>
+                                {item.active ? 'Deactivate' : 'Activate'}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="text-danger"
+                                disabled={saving}
+                                onClick={() => void handleDelete(item)}
+                              >
+                                Delete
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+function StoragePanel({ storage }: { storage: AttachmentStorageOverview | null }) {
+  const totalFiles = storage?.total_files ?? 0
+  const totalBytes = storage?.total_bytes ?? 0
+  const lessons = storage?.lessons ?? []
+
+  return (
+    <>
       <Card className="mb-6">
-        <h2 className="mb-1 text-lg font-medium text-text">Add {tabMeta.singular}</h2>
-        <p className="mb-4 text-sm text-muted">{tabMeta.help}</p>
-        <form onSubmit={handleAdd} className="flex flex-wrap items-end gap-3">
-          <div className="min-w-0 w-full flex-1 sm:min-w-40">
-            <label className="mb-1 block text-sm font-medium text-text" htmlFor="vocab-code">
-              Code
-            </label>
-            <TextInput
-              id="vocab-code"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="e.g. HSE"
-              className="w-full"
-            />
+        <h2 className="mb-1 text-lg font-medium text-text">Lesson attachments</h2>
+        <p className="mb-4 text-sm text-muted">
+          Files live under the data directory with SQLite, so they survive redeploy when that volume is
+          mounted. Maximum size: 10 MB per file.
+        </p>
+        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div>
+            <dt className="text-xs font-medium uppercase tracking-wide text-muted">Total size</dt>
+            <dd className="mt-1 text-xl font-medium text-text">{formatBytes(totalBytes)}</dd>
           </div>
-          <div className="min-w-0 w-full flex-1 sm:min-w-40">
-            <label className="mb-1 block text-sm font-medium text-text" htmlFor="vocab-label">
-              Label
-            </label>
-            <TextInput
-              id="vocab-label"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="Display name (optional)"
-              className="w-full"
-            />
+          <div>
+            <dt className="text-xs font-medium uppercase tracking-wide text-muted">Files</dt>
+            <dd className="mt-1 text-xl font-medium text-text">{totalFiles}</dd>
           </div>
-          <Button type="submit" variant="primary" disabled={saving || !code.trim()}>
-            Add
-          </Button>
-        </form>
+          <div>
+            <dt className="text-xs font-medium uppercase tracking-wide text-muted">Lessons with files</dt>
+            <dd className="mt-1 text-xl font-medium text-text">{lessons.length}</dd>
+          </div>
+        </dl>
       </Card>
 
-      {current.length === 0 ? (
+      {lessons.length === 0 ? (
         <Card>
-          <p className="text-muted">No values yet. Add a code above.</p>
+          <p className="text-muted">No lesson attachments stored yet.</p>
         </Card>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-line bg-panel">
-          <table className="w-full min-w-[36rem] text-sm">
+          <table className="w-full min-w-[32rem] text-sm">
             <thead>
               <tr className="border-b border-line text-left text-muted">
-                {tab === 'phases' ? <th className="px-4 py-3 font-medium w-24">Order</th> : null}
-                <th className="px-4 py-3 font-medium">Code</th>
-                <th className="px-4 py-3 font-medium">Label</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium text-right">Actions</th>
+                <th className="px-4 py-3 font-medium">Lesson</th>
+                <th className="px-4 py-3 font-medium">Title</th>
+                <th className="px-4 py-3 font-medium">Files</th>
+                <th className="px-4 py-3 font-medium">Size</th>
               </tr>
             </thead>
             <tbody>
-              {current.map((item, index) => (
-                <tr key={item.code} className="border-b border-line last:border-0">
-                  {tab === 'phases' ? (
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          className="px-2 py-1"
-                          disabled={saving || index === 0}
-                          onClick={() => void move(index, -1)}
-                        >
-                          ↑
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          className="px-2 py-1"
-                          disabled={saving || index === current.length - 1}
-                          onClick={() => void move(index, 1)}
-                        >
-                          ↓
-                        </Button>
-                      </div>
-                    </td>
-                  ) : null}
+              {lessons.map((row) => (
+                <tr key={row.lesson_id} className="border-b border-line last:border-0">
                   <td className="px-4 py-3 font-mono text-accent">
-                    {editing === item.code ? (
-                      <TextInput value={editCode} onChange={(e) => setEditCode(e.target.value)} />
-                    ) : (
-                      item.code
-                    )}
+                    <Link to={`/lessons/${encodeURIComponent(row.lesson_id)}`} className="hover:underline">
+                      {row.lesson_id}
+                    </Link>
                   </td>
-                  <td className="px-4 py-3 text-text">
-                    {editing === item.code ? (
-                      <TextInput value={editLabel} onChange={(e) => setEditLabel(e.target.value)} />
-                    ) : (
-                      item.label
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-muted">{item.active ? 'Active' : 'Inactive'}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap justify-end gap-2">
-                      {editing === item.code ? (
-                        <>
-                          <Button type="button" variant="primary" disabled={saving} onClick={() => void handleSaveEdit(item.code)}>
-                            Save
-                          </Button>
-                          <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
-                            Cancel
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button type="button" variant="ghost" disabled={saving} onClick={() => startEdit(item)}>
-                            Rename
-                          </Button>
-                          <Button type="button" variant="ghost" disabled={saving} onClick={() => void handleToggle(item)}>
-                            {item.active ? 'Deactivate' : 'Activate'}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            className="text-danger"
-                            disabled={saving}
-                            onClick={() => void handleDelete(item)}
-                          >
-                            Delete
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </td>
+                  <td className="px-4 py-3 text-text">{row.title || '—'}</td>
+                  <td className="px-4 py-3 text-muted">{row.file_count}</td>
+                  <td className="px-4 py-3 text-text">{formatBytes(row.bytes)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
-    </div>
+    </>
   )
 }

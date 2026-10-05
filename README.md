@@ -54,7 +54,7 @@ Deploy to port 8000. Nixpacks automatically:
 - `CORS_ORIGINS`: Additional allowed CORS origins (comma-separated). Portal origin `https://portal.powerlearn.us` is included by default.
 - `PORT`: Server port (default: 8000)
 
-**Volume:** Optional. Mount `/data` and set `SLLR_DATA_DIR=/data` to persist `lessons.db`. Empty dir is correct on first boot.
+**Volume:** Optional. Mount `/data` and set `SLLR_DATA_DIR=/data` to persist `lessons.db` and lesson attachments (`/data/attachments`). Empty dir is correct on first boot.
 
 ### Portal Deployment at /sllr
 
@@ -105,6 +105,11 @@ All endpoints are prefixed with the base path (default `/sllr`):
 - `POST /sllr/api/lessons` — Create lesson (Status: Draft, Implementation Status: Not Implemented)
 - `PUT /sllr/api/lessons/{id}` — Update lesson (all fields except ID)
 - `PATCH /sllr/api/lessons/{id}` — Partial update (e.g., status or implementation_status)
+- `GET /sllr/api/lessons/{id}/attachments` — List attachments
+- `POST /sllr/api/lessons/{id}/attachments` — Upload a file (`file` form field; **10 MB per file**)
+- `GET /sllr/api/lessons/{id}/attachments/{attachment_id}` — Download
+- `DELETE /sllr/api/lessons/{id}/attachments/{attachment_id}` — Delete (owner or portal admin)
+- `GET /sllr/api/settings/storage` — Admin: attachment disk usage by lesson
 - `GET /sllr/api/kpis` — Compute governance KPIs
 - `GET /sllr/api/reports/validation` — Validation report (text)
 - `GET /sllr/api/reports/duplicates` — Duplicates report (text)
@@ -127,7 +132,7 @@ All endpoints are prefixed with the base path (default `/sllr`):
 - `/implementation` — Implementation follow-up (track recommendations)
 - `/report` — Live card gallery with filtered HTML/PDF download
 - `/approvers` — Admin: Technical Block approvers plus General default
-- `/settings` — Admin: technical blocks and project phases
+- `/settings` — Admin: attachment storage usage, technical blocks, and project phases
 - `/activity` — Admin: write activity log
 
 ## Data Model
@@ -153,7 +158,7 @@ Controlled vocabularies in `data/*.csv` (technical blocks and phases are also ed
 
 ## Storage
 
-Live lessons are in SQLite (`lessons.db`). Schema is created on boot if missing. If a leftover `lessons_master.csv` still has rows, they are migrated once into SQLite; CSV is then import/export only. `list` / `create` / `update` / `patch` and KPI `compute_kpis` share this same SQLite file. No delete endpoint.
+Live lessons are in SQLite (`lessons.db`). Schema is created on boot if missing. If a leftover `lessons_master.csv` still has rows, they are migrated once into SQLite; CSV is then import/export only. `list` / `create` / `update` / `patch` / `delete` and KPI `compute_kpis` share this same SQLite file. Lesson attachments are stored under `{SLLR_DATA_DIR}/attachments/` (hashed lesson folders, UUID filenames) with metadata in SQLite. Deleting a lesson also deletes its attachment files. Hard limit: **10 MB per file**.
 
 ## Tests
 

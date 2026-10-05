@@ -46,7 +46,7 @@ ENV PYTHONUNBUFFERED=1
 ENV PORT=8000
 ENV PYTHONPATH=/app:/app/src
 
-# Volume for persistent data
+# Volume for persistent data (SQLite + lesson attachments)
 VOLUME /data
 
 EXPOSE 8000
