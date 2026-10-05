@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { api, Lesson, References } from '../lib/api'
 import { lessonMatchesQuery } from '../lib/lessonSearch'
+import { DownloadPdfButton } from '../components/DownloadPdfButton'
 import { Button, Card, Select, StatusDot, TextInput } from '../components/ui'
 
 function parseDate(value?: string): number {
@@ -243,6 +244,7 @@ export function Report() {
                       {open ? 'Show less' : 'Show more'}
                     </Button>
                   ) : null}
+                  <DownloadPdfButton ids={[id]} variant="ghost" className="px-3 py-1 text-sm" />
                   <Link to={`/lessons/${encodeURIComponent(id)}`} className="text-sm text-accent hover:underline">
                     Open lesson
                   </Link>

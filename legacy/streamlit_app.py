@@ -508,7 +508,7 @@ elif page == "View report":
 # ---------- Export ----------
 elif page == "Export":
     st.title("Export")
-    st.caption("Generate PDF (phase → category, page breaks between categories) or HTML (expandable cards with filters).")
+    st.caption("Generate a printable PDF report (one lesson per page) or HTML (expandable cards with filters).")
     lessons = get_lessons()
     if not lessons:
         st.info("No lessons to export. Add lessons first.")
@@ -520,7 +520,7 @@ elif page == "Export":
     col_pdf, col_html = st.columns(2)
     with col_pdf:
         st.subheader("PDF")
-        st.markdown("One section per **Phase**; within each phase, content ordered by **Category** → **Technical Block** → **Sub-category**, with a **page break between categories**.")
+        st.markdown("Professional report layout with Project, Technical Block, narrative sections, and workflow fields. One lesson per page.")
         if REPORTLAB_AVAILABLE:
             if st.button("Generate PDF", key="export_pdf_btn"):
                 with st.spinner("Building PDF…"):
@@ -539,7 +539,7 @@ elif page == "Export":
 
     with col_html:
         st.subheader("HTML")
-        st.markdown("Single HTML file with **expandable cards** and **filters** (Phase, Category, Technical Block, Status). Open in any browser; no server needed.")
+        st.markdown("Single HTML file with **expandable cards** and **filters** (Phase, Technical Block, Status). Open in any browser; no server needed.")
         if st.button("Generate HTML", key="export_html_btn"):
             with st.spinner("Building HTML…"):
                 try:

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router'
 import { DeleteLessonButton, deletedLessonNotice } from '../components/DeleteLessonButton'
+import { DownloadPdfButton } from '../components/DownloadPdfButton'
 import { Card, Button, Select, StatusDot, TextInput } from '../components/ui'
 import { api, Lesson, PortalMe, References } from '../lib/api'
 import { canDeleteLesson, canEditLesson, lessonPath } from '../lib/lessonAccess'
@@ -150,6 +151,7 @@ export function Lessons() {
                     </div>
                   </Link>
                   <div className="flex flex-wrap gap-2 sm:shrink-0">
+                    <DownloadPdfButton ids={[id]} />
                     <Link to={href}>
                       <Button variant="primary">View</Button>
                     </Link>

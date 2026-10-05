@@ -1,3 +1,5 @@
+import { fallbackPdfName, filenameFromContentDisposition } from './downloadName'
+
 const API_BASE = '/sllr/api'
 
 export interface Lesson {
@@ -261,7 +263,7 @@ export const api = {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'lessons_learned.pdf'
+    a.download = filenameFromContentDisposition(res.headers.get('Content-Disposition'), fallbackPdfName(ids))
     a.click()
     URL.revokeObjectURL(url)
   },

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { DeleteLessonButton } from '../components/DeleteLessonButton'
+import { DownloadPdfButton } from '../components/DownloadPdfButton'
 import { LessonForm } from '../components/LessonForm'
 import { Button, Card, StatusDot } from '../components/ui'
 import { api, Lesson, PortalMe, References } from '../lib/api'
@@ -99,16 +100,15 @@ export function LessonEdit() {
             <p className="mt-1 font-mono text-sm text-muted">{lesson['Lesson ID']}</p>
           ) : null}
         </div>
-        {allowedToEdit || allowedToDelete ? (
-          <div className="flex flex-wrap gap-2 sm:shrink-0">
-            {allowedToEdit && !editing ? (
-              <Button variant="primary" onClick={() => setEditing(true)}>
-                Edit
-              </Button>
-            ) : null}
-            {allowedToDelete ? <DeleteLessonButton lesson={lesson} /> : null}
-          </div>
-        ) : null}
+        <div className="flex flex-wrap gap-2 sm:shrink-0">
+          {!editing ? <DownloadPdfButton ids={[lesson['Lesson ID']]} /> : null}
+          {allowedToEdit && !editing ? (
+            <Button variant="primary" onClick={() => setEditing(true)}>
+              Edit
+            </Button>
+          ) : null}
+          {allowedToDelete ? <DeleteLessonButton lesson={lesson} /> : null}
+        </div>
       </div>
 
       {editing ? (
