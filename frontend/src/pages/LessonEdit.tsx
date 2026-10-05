@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { DeleteLessonButton } from '../components/DeleteLessonButton'
 import { DownloadPdfButton } from '../components/DownloadPdfButton'
+import { LessonAttachments } from '../components/LessonAttachments'
 import { LessonForm } from '../components/LessonForm'
 import { Button, Card, StatusDot } from '../components/ui'
 import { api, Lesson, PortalMe, References } from '../lib/api'
@@ -112,17 +113,20 @@ export function LessonEdit() {
       </div>
 
       {editing ? (
-        <Card>
-          <LessonForm
-            lesson={lesson}
-            refs={refs}
-            error={error}
-            loading={loading}
-            onChange={setLesson}
-            onSubmit={handleSubmit}
-            onCancel={() => setEditing(false)}
-          />
-        </Card>
+        <div className="space-y-4">
+          <Card>
+            <LessonForm
+              lesson={lesson}
+              refs={refs}
+              error={error}
+              loading={loading}
+              onChange={setLesson}
+              onSubmit={handleSubmit}
+              onCancel={() => setEditing(false)}
+            />
+          </Card>
+          <LessonAttachments lessonId={lesson['Lesson ID']} owner={lesson.Owner} me={me} />
+        </div>
       ) : (
         <div className="space-y-4">
           <Card>
@@ -166,6 +170,8 @@ export function LessonEdit() {
               <DetailField label="Modified Date" value={lesson['Modified Date']} />
             </div>
           </Card>
+
+          <LessonAttachments lessonId={lesson['Lesson ID']} owner={lesson.Owner} me={me} />
         </div>
       )}
     </div>

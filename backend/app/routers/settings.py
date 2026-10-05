@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from backend.app.activity import changed_values, log_activity
 from backend.app.identity import require_portal_admin
 from backend.app.storage import (
+    attachment_storage_overview,
     create_vocab,
     delete_vocab,
     list_all_vocab,
@@ -14,6 +15,7 @@ from backend.app.storage import (
     reorder_vocab,
     update_vocab,
 )
+from src.sllr.attachments import MAX_ATTACHMENT_BYTES, MAX_ATTACHMENT_LABEL
 from src.sllr.store import EDITABLE_VOCAB_KINDS
 
 router = APIRouter()
@@ -55,6 +57,15 @@ def _http_from_value_error(exc: ValueError) -> HTTPException:
 async def get_all_vocab(request: Request):
     require_portal_admin(request, _ADMIN)
     return list_all_vocab(include_inactive=True)
+
+
+@router.get("/settings/storage")
+async def get_storage_overview(request: Request):
+    require_portal_admin(request, _ADMIN)
+    overview = attachment_storage_overview()
+    overview["max_file_bytes"] = MAX_ATTACHMENT_BYTES
+    overview["max_file_label"] = MAX_ATTACHMENT_LABEL
+    return overview
 
 
 @router.get("/settings/vocab/{kind}")
