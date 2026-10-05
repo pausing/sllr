@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from backend.app.activity import log_activity
 from backend.app.storage import import_lessons_csv, lessons_to_csv_text, load_lessons_with_lock
-from src.sllr.export_pdf import build_pdf, REPORTLAB_AVAILABLE
+from src.sllr.export_pdf import REPORTLAB_AVAILABLE, build_pdf, content_disposition, suggest_pdf_filename
 from src.sllr.export_html import build_html_string
 
 
@@ -48,7 +48,8 @@ def _lessons_for_export(selection: ExportSelection) -> list[dict]:
 @router.post("/export/pdf")
 async def export_pdf(request: Request):
     """
-    Generate PDF export (phase → technical block grouping).
+    Generate a printable PDF report. One lesson becomes a standalone report;
+    multiple lessons use the same layout, one lesson per page after a cover.
     Body may include ``ids`` for the currently filtered View Report set.
     """
     if not REPORTLAB_AVAILABLE:
@@ -72,10 +73,11 @@ async def export_pdf(request: Request):
         pdf_bytes = tmp_path.read_bytes()
         tmp_path.unlink()
 
+        filename = suggest_pdf_filename(lessons)
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",
-            headers={"Content-Disposition": "attachment; filename=lessons_learned.pdf"}
+            headers={"Content-Disposition": content_disposition(filename)},
         )
     except Exception as e:
         if tmp_path.exists():

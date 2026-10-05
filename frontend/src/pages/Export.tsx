@@ -36,7 +36,7 @@ export function Export() {
       <h1 className="text-2xl font-bold text-text mb-6 md:text-3xl">Export</h1>
       
       <p className="text-muted mb-6">
-        Generate PDF (phase → category, page breaks between categories) or HTML (expandable cards with filters).
+        Generate a printable PDF report (one lesson per page) or HTML (expandable cards with filters).
       </p>
 
       {error && (
@@ -49,9 +49,8 @@ export function Export() {
         <Card>
           <h3 className="text-lg font-medium text-text mb-3">PDF Export</h3>
           <p className="text-sm text-muted mb-4">
-            One section per <strong>Phase</strong>; within each phase, content ordered by{' '}
-            <strong>Category</strong> → <strong>Technical Block</strong> → <strong>Sub-category</strong>,
-            with a page break between categories.
+            Professional report layout: title, Lesson ID, Project, Technical Block, phase,
+            narrative sections, and workflow fields. One lesson per page.
           </p>
           <Button variant="primary" onClick={handlePDF} disabled={pdfLoading}>
             {pdfLoading ? 'Generating...' : 'Download PDF'}
@@ -62,7 +61,7 @@ export function Export() {
           <h3 className="text-lg font-medium text-text mb-3">HTML Export</h3>
           <p className="text-sm text-muted mb-4">
             Single HTML file with <strong>expandable cards</strong> and <strong>filters</strong>{' '}
-            (Phase, Category, Technical Block, Status). Open in any browser; no server needed.
+            (Phase, Technical Block, Status). Open in any browser; no server needed.
           </p>
           <Button variant="primary" onClick={handleHTML} disabled={htmlLoading}>
             {htmlLoading ? 'Generating...' : 'Download HTML'}
